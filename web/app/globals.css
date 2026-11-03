@@ -362,3 +362,16 @@ details summary { cursor: pointer; font-weight: 600; }
 .outra.aprovada { border-left-color: var(--sim); }
 .outra.rejeitada { border-left-color: var(--nao); }
 .outra.neutra { border-left-color: var(--desconhecido); }
+
+/* ===== Lista de leis ===== */
+.leis-lista { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: .8rem; }
+.lei-card { background: var(--surface); border: 1px solid var(--border); border-left-width: 6px; border-radius: 16px; padding: .9rem 1.1rem; box-shadow: var(--shadow); display: grid; gap: .5rem; }
+.lei-card.aprovada { border-left-color: var(--sim); }
+.lei-card.rejeitada { border-left-color: var(--nao); }
+.lei-card.neutra, .lei-card.simbolica { border-left-color: var(--desconhecido); }
+.lei-nominal { display: grid; gap: .4rem; }
+.mini-placar { display: grid; gap: .25rem; max-width: 28rem; }
+.mini-placar .barra { height: 12px; }
+.mini-placar-txt { font-size: .9rem; }
+.txt-sim { color: var(--sim-text); }
+.txt-nao { color: var(--nao-text); }

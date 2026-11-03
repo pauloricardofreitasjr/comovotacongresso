@@ -29,7 +29,7 @@ make down
 | Rota | O que devolve |
 |---|---|
 | `GET /api/v1/status` | última atualização, período e totais |
-| `GET /api/v1/proposicoes` | proposições com votação (`tipo`, `ano`, `numero`, `busca`, `pagina`, `limite`) |
+| `GET /api/v1/proposicoes` | proposições com votação (`tipo`, `ano`, `numero`, `busca`, `so_nominais`, `pagina`, `limite`); cada uma com votação nominal traz `ultima_nominal` (resultado e Sim × Não) |
 | `GET /api/v1/proposicoes/{id}` | proposição + linha do tempo das votações (`principal` em destaque) |
 | `GET /api/v1/votacoes/{id}` | votação, orientações e votos individuais (só nominais) |
 | `GET /api/v1/parlamentares` | ranking (`partido`, `uf`, `busca`, `em_exercicio`, `ordenarPor`, `ordem`, `min_votacoes`) |

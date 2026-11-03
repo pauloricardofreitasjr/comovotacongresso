@@ -232,6 +232,17 @@ func texto(r *http.Request, nome string, maxLen int) (string, error) {
 	return v, nil
 }
 
+// booleano lê um query param "true"/"false"; ausente → false.
+func booleano(r *http.Request, nome string) (bool, error) {
+	switch r.URL.Query().Get(nome) {
+	case "", "false":
+		return false, nil
+	case "true":
+		return true, nil
+	}
+	return false, paramErr("parâmetro '" + nome + "' deve ser 'true' ou 'false'")
+}
+
 func casaParam(r *http.Request) (string, error) {
 	c := r.URL.Query().Get("casa")
 	if c != "" && c != "camara" && c != "senado" {

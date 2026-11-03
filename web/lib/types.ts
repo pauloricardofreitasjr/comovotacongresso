@@ -23,11 +23,15 @@ export type PropRef = {
   ementa: string;
 };
 
+export type UltimaNominal = { votacao_id: string; data_hora: string; aprovada: boolean | null; sim: number; nao: number };
+
 export type ProposicaoResumo = PropRef & {
   casa: string;
   total_votacoes: number;
   votacoes_nominais: number;
   ultima_votacao: string;
+  /** Só na listagem, e só quando há votação nominal. */
+  ultima_nominal?: UltimaNominal;
 };
 
 export type ResumoVotos = {

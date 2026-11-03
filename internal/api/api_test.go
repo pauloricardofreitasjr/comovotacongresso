@@ -196,6 +196,24 @@ func TestProposicoes_ListaFiltrosEPaginacao(t *testing.T) {
 	if got, total := ids("/api/v1/proposicoes?busca=%25"); got != "" || total != 0 { // % não é curinga
 		t.Errorf("busca com %%: %q total=%v", got, total)
 	}
+	// so_nominais: no dataset as duas têm votação nominal (a cobertura do filtro com lei só simbólica está no store)
+	if got, total := ids("/api/v1/proposicoes?so_nominais=true"); got != "PEC 5/2024;PL 10/2025" || total != 2 {
+		t.Errorf("so_nominais: %q total=%v", got, total)
+	}
+	if code, _, _ := get(t, srv, "/api/v1/proposicoes?so_nominais=talvez"); code != 400 {
+		t.Errorf("so_nominais inválido deveria dar 400, deu %d", code)
+	}
+	// última nominal: resultado e placar só nas que têm votação nominal
+	_, o, _ := get(t, srv, "/api/v1/proposicoes")
+	for _, p := range lista(o, "dados") {
+		un, tem := p["ultima_nominal"].(map[string]any)
+		if p["votacoes_nominais"].(float64) > 0 && (!tem || un["votacao_id"] == "" || un["sim"] == nil || un["nao"] == nil) {
+			t.Errorf("%v deveria ter ultima_nominal: %v", p["identificacao"], p)
+		}
+		if p["votacoes_nominais"].(float64) == 0 && tem {
+			t.Errorf("%v só tem simbólica e não deveria ter ultima_nominal", p["identificacao"])
+		}
+	}
 	// paginação: página 2 com limite 1 → segunda proposição; total preservado
 	code, o, _ := get(t, srv, "/api/v1/proposicoes?limite=1&pagina=2")
 	if code != 200 || o["total"].(float64) != 2 || len(lista(o, "dados")) != 1 || lista(o, "dados")[0]["identificacao"] != "PL 10/2025" {

@@ -42,8 +42,10 @@ type ProposicaoFiltro struct {
 	Ano    int
 	Numero int
 	Busca  string // texto livre na ementa
-	Limite int
-	Offset int
+	// SoNominais limita a proposições com ao menos uma votação nominal (voto de cada deputado registrado).
+	SoNominais bool
+	Limite     int
+	Offset     int
 }
 
 type ProposicaoResumo struct {
@@ -56,6 +58,16 @@ type ProposicaoResumo struct {
 	TotalVotacoes int
 	Nominais      int
 	UltimaVotacao time.Time
+	// UltimaNominal só é preenchida em ListarProposicoes, e só se houver votação nominal.
+	UltimaNominal *UltimaNominal
+}
+
+// UltimaNominal resume a votação nominal mais recente de uma proposição.
+type UltimaNominal struct {
+	VotacaoID string
+	DataHora  time.Time
+	Aprovada  *bool
+	Sim, Nao  int
 }
 
 func (s *Store) ListarProposicoes(ctx context.Context, f ProposicaoFiltro) ([]ProposicaoResumo, int, error) {
@@ -81,6 +93,10 @@ func (s *Store) ListarProposicoes(ctx context.Context, f ProposicaoFiltro) ([]Pr
 	if len(where) > 0 {
 		cond = "WHERE " + strings.Join(where, " AND ")
 	}
+	having := ""
+	if f.SoNominais {
+		having = "HAVING count(v.id) FILTER (WHERE v.tipo = 'nominal') > 0"
+	}
 	args = append(args, f.Limite, f.Offset)
 	q := fmt.Sprintf(`
 		SELECT p.id, p.casa::text, p.sigla_tipo, p.numero, p.ano, coalesce(p.ementa,''),
@@ -88,8 +104,9 @@ func (s *Store) ListarProposicoes(ctx context.Context, f ProposicaoFiltro) ([]Pr
 		FROM proposicoes p JOIN votacoes v ON v.proposicao_id = p.id
 		%s
 		GROUP BY p.id
+		%s
 		ORDER BY max(v.data_hora) DESC, p.id DESC
-		LIMIT $%d OFFSET $%d`, cond, len(args)-1, len(args))
+		LIMIT $%d OFFSET $%d`, cond, having, len(args)-1, len(args))
 
 	rows, err := s.pool.Query(ctx, q, args...)
 	if err != nil {
@@ -110,13 +127,49 @@ func (s *Store) ListarProposicoes(ctx context.Context, f ProposicaoFiltro) ([]Pr
 	}
 	if len(out) == 0 && f.Offset > 0 { // count(*) OVER() some sem linhas: reconta para manter o total correto
 		err := s.pool.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) FROM (
-			SELECT p.id FROM proposicoes p JOIN votacoes v ON v.proposicao_id = p.id %s GROUP BY p.id) t`, cond),
+			SELECT p.id FROM proposicoes p JOIN votacoes v ON v.proposicao_id = p.id %s GROUP BY p.id %s) t`, cond, having),
 			args[:len(args)-2]...).Scan(&total)
 		if err != nil {
 			return nil, 0, err
 		}
 	}
+	if err := s.preencherUltimaNominal(ctx, out); err != nil {
+		return nil, 0, err
+	}
 	return out, total, nil
+}
+
+// preencherUltimaNominal anexa a votação nominal mais recente (resultado e Sim x Não) às proposições da página.
+func (s *Store) preencherUltimaNominal(ctx context.Context, ps []ProposicaoResumo) error {
+	if len(ps) == 0 {
+		return nil
+	}
+	ids := make([]int, len(ps))
+	pos := make(map[int]int, len(ps))
+	for i, p := range ps {
+		ids[i] = p.ID
+		pos[p.ID] = i
+	}
+	rows, err := s.pool.Query(ctx, `
+		SELECT DISTINCT ON (v.proposicao_id) v.proposicao_id, v.id, v.data_hora, v.aprovada,
+		       (SELECT count(*) FROM votos x WHERE x.votacao_id = v.id AND x.voto = 'sim'),
+		       (SELECT count(*) FROM votos x WHERE x.votacao_id = v.id AND x.voto = 'nao')
+		FROM votacoes v
+		WHERE v.proposicao_id = ANY($1) AND v.tipo = 'nominal'
+		ORDER BY v.proposicao_id, v.data_hora DESC, v.id DESC`, ids)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var pid int
+		var u UltimaNominal
+		if err := rows.Scan(&pid, &u.VotacaoID, &u.DataHora, &u.Aprovada, &u.Sim, &u.Nao); err != nil {
+			return err
+		}
+		ps[pos[pid]].UltimaNominal = &u
+	}
+	return rows.Err()
 }
 
 // ResumoVotos conta os votos de uma votação nominal por tipo.

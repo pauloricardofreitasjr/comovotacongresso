@@ -126,6 +126,26 @@ export function BarraVotos({ resumo }: { resumo: ResumoVotos }) {
   );
 }
 
+/** Placar compacto Sim × Não para cartões de lista; os números sempre aparecem em texto. */
+export function MiniPlacar({ sim, nao }: { sim: number; nao: number }) {
+  const total = sim + nao;
+  return (
+    <div className="mini-placar">
+      <div className="barra" role="img" aria-label={`${sim} Sim e ${nao} Não`}>
+        {total > 0 ? (
+          <>
+            <span className="sim" style={{ width: `${(sim / total) * 100}%` }} />
+            <span className="nao" style={{ width: `${(nao / total) * 100}%` }} />
+          </>
+        ) : null}
+      </div>
+      <span className="mini-placar-txt">
+        <strong className="txt-sim">{formatInt(sim)} Sim</strong> × <strong className="txt-nao">{formatInt(nao)} Não</strong>
+      </span>
+    </div>
+  );
+}
+
 /** Placar em destaque: Sim e Não grandes, com percentual e contagem; os demais votos viram etiquetas. */
 export function Placar({ resumo }: { resumo: ResumoVotos }) {
   const pct = (n: number) => formatPct(resumo.total > 0 ? (n / resumo.total) * 100 : null);

@@ -31,10 +31,14 @@ paths:
         - { name: ano, in: query, schema: { type: integer } }
         - { name: numero, in: query, schema: { type: integer } }
         - { name: busca, in: query, schema: { type: string, maxLength: 100 }, description: 'Texto da ementa (sem acento, sem diferenciar maiúsculas)' }
+        - { name: so_nominais, in: query, schema: { type: boolean, default: false }, description: 'Só proposições com ao menos uma votação nominal (voto de cada deputado registrado)' }
         - { name: pagina, in: query, schema: { type: integer, minimum: 1, default: 1 } }
         - { name: limite, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
       responses:
-        '200': { description: Página de proposições }
+        '200':
+          description: |
+            Página de proposições. Cada item com votação nominal traz `ultima_nominal` (a nominal mais recente:
+            resultado e total de Sim e Não); proposições só com votação simbólica não têm o campo.
         '400': { $ref: '#/components/responses/Erro' }
   /api/v1/proposicoes/{id}:
     get:

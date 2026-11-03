@@ -104,10 +104,25 @@ type proposicaoResumo struct {
 	TotalVotacoes    int       `json:"total_votacoes"`
 	VotacoesNominais int       `json:"votacoes_nominais"`
 	UltimaVotacao    time.Time `json:"ultima_votacao"`
+	// só na listagem, e só para proposições com votação nominal
+	UltimaNominal *ultimaNominalDTO `json:"ultima_nominal,omitempty"`
+}
+
+type ultimaNominalDTO struct {
+	VotacaoID string    `json:"votacao_id"`
+	DataHora  time.Time `json:"data_hora"`
+	Aprovada  *bool     `json:"aprovada"`
+	Sim       int       `json:"sim"`
+	Nao       int       `json:"nao"`
 }
 
 func toProposicaoResumo(p store.ProposicaoResumo) proposicaoResumo {
+	var un *ultimaNominalDTO
+	if p.UltimaNominal != nil {
+		un = &ultimaNominalDTO{p.UltimaNominal.VotacaoID, p.UltimaNominal.DataHora, p.UltimaNominal.Aprovada, p.UltimaNominal.Sim, p.UltimaNominal.Nao}
+	}
 	return proposicaoResumo{
+		UltimaNominal:    un,
 		propRef:          propRef{p.ID, identificacao(p.SiglaTipo, p.Numero, p.Ano), p.SiglaTipo, p.Numero, p.Ano, p.Ementa},
 		Casa:             p.Casa,
 		TotalVotacoes:    p.TotalVotacoes,
@@ -131,6 +146,9 @@ func (a *API) listarProposicoes(w http.ResponseWriter, r *http.Request) {
 	}
 	if err == nil {
 		f.Busca, err = texto(r, "busca", 100)
+	}
+	if err == nil {
+		f.SoNominais, err = booleano(r, "so_nominais")
 	}
 	if err != nil {
 		erro(w, http.StatusBadRequest, "parametro_invalido", err.Error())

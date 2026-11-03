@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatPct, formatInt, formatData, formatDataHora, plural, iniciais, infoVoto, rotuloOrientacao,
-  rotuloResultado, rotuloAlinhamento, query, primeiro, inteiroPositivo,
+  rotuloResultado, rotuloAlinhamento, query, primeiro, inteiroPositivo, compararComMedia,
 } from "./format";
 
 describe("formatPct", () => {
@@ -83,5 +83,14 @@ describe("query e searchParams", () => {
     expect(inteiroPositivo("-2", 1)).toBe(1);
     expect(inteiroPositivo("abc", 7)).toBe(7);
     expect(inteiroPositivo(undefined, 5)).toBe(5);
+  });
+});
+
+describe("compararComMedia", () => {
+  it("diz acima, abaixo ou na média, em pontos", () => {
+    expect(compararComMedia(95.2, 92.1)).toBe("3,1 pontos acima da média da Câmara");
+    expect(compararComMedia(80, 92.1)).toBe("12,1 pontos abaixo da média da Câmara");
+    expect(compararComMedia(93, 92.5)).toBe("0,5 ponto acima da média da Câmara");
+    expect(compararComMedia(92.3, 92.1)).toBe("Na média da Câmara");
   });
 });

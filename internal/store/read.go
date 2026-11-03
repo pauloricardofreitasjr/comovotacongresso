@@ -562,7 +562,16 @@ func (s *Store) ListarPartidos(ctx context.Context, casa string) ([]PartidoLinha
 	return out, rows.Err()
 }
 
+// MediasCamara são os percentuais do conjunto da Câmara (todas as sessões e votações somadas,
+// não a média simples dos deputados), para dar referência ao percentual de cada deputado.
+type MediasCamara struct {
+	PresencaSessao *float64
+	Participacao   *float64
+	Governismo     *float64
+}
+
 type Status struct {
+	Medias             MediasCamara
 	AtualizadoEm       *time.Time
 	PrimeiraVotacao    *time.Time
 	UltimaVotacao      *time.Time
@@ -584,5 +593,16 @@ func (s *Store) GetStatus(ctx context.Context) (Status, error) {
 		       (SELECT count(*) FROM proposicoes)`).
 		Scan(&st.AtualizadoEm, &st.PrimeiraVotacao, &st.UltimaVotacao, &st.VotacoesNominais, &st.VotacoesSimbolicas,
 			&st.Sessoes, &st.Parlamentares, &st.Proposicoes)
+	if err != nil {
+		return st, err
+	}
+	err = s.pool.QueryRow(ctx, `
+		SELECT (SELECT ROUND((100.0 * SUM(m.sessoes_presente) / NULLIF(SUM(m.sessoes_elegiveis), 0))::numeric, 2)::float8
+		          FROM mv_parlamentar_presenca_sessao m JOIN parlamentares p ON p.id = m.parlamentar_id WHERE p.casa = 'camara'),
+		       (SELECT ROUND((100.0 * SUM(votacoes_votou) / NULLIF(SUM(votacoes_elegiveis), 0))::numeric, 2)::float8
+		          FROM mv_parlamentar_metricas WHERE casa = 'camara'),
+		       (SELECT ROUND((100.0 * SUM(votacoes_alinhadas_governo) / NULLIF(SUM(votacoes_base_governo), 0))::numeric, 2)::float8
+		          FROM mv_parlamentar_metricas WHERE casa = 'camara')`).
+		Scan(&st.Medias.PresencaSessao, &st.Medias.Participacao, &st.Medias.Governismo)
 	return st, err
 }

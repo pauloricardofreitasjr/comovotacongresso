@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { api } from "@/lib/api";
-import { formatInt, formatPct, inteiroPositivo, plural, primeiro, query } from "@/lib/format";
-import { Paginacao, Pessoa } from "@/components/ui";
+import { formatInt, inteiroPositivo, plural, primeiro, query } from "@/lib/format";
+import { IconBusca } from "@/components/icons";
+import { MiniMetrica, Paginacao } from "@/components/ui";
+import { Foto } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Deputados" };
 
@@ -50,7 +52,46 @@ export default async function Parlamentares({ searchParams }: { searchParams: Pr
       <h1>Deputados</h1>
       <p className="lead">Compare como cada deputado federal atuou no Plenário. Cada medida mostra a quantidade de votações que a sustenta.</p>
 
-      <ul className="tabs" aria-label="Ordenar por">
+      <form className="painel-busca" action="/parlamentares" role="search">
+        {ordenarPor !== "nome" ? <input type="hidden" name="ordenarPor" value={ordenarPor} /> : null}
+        <div className="busca-grande">
+          <IconBusca />
+          <label className="sr-only" htmlFor="busca-dep">Nome do deputado</label>
+          <input id="busca-dep" type="search" name="busca" defaultValue={busca} placeholder="Buscar deputado pelo nome" />
+          <button type="submit">Buscar</button>
+        </div>
+        <div className="filters">
+          <label>
+            Estado
+            <select name="uf" defaultValue={uf}>
+              <option value="">Todos</option>
+              {UFS.map((u) => (
+                <option key={u} value={u}>{u}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Partido atual
+            <select name="partido" defaultValue={partido}>
+              <option value="">Todos</option>
+              {nomesPartidos.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Mostrar
+            <select name="em_exercicio" defaultValue={todos ? "todos" : "true"}>
+              <option value="true">Em exercício</option>
+              <option value="todos">Todos desde 2023</option>
+            </select>
+          </label>
+          <button type="submit" className="secondary">Aplicar filtros</button>
+        </div>
+      </form>
+
+      <p className="rotulo-ordem" id="ordenar-por">Ordenar por</p>
+      <ul className="tabs" aria-labelledby="ordenar-por">
         {ABAS.map((a) => (
           <li key={a.chave}>
             <Link
@@ -63,40 +104,6 @@ export default async function Parlamentares({ searchParams }: { searchParams: Pr
         ))}
       </ul>
 
-      <form className="filters" action="/parlamentares" role="search">
-        {ordenarPor !== "nome" ? <input type="hidden" name="ordenarPor" value={ordenarPor} /> : null}
-        <label>
-          Nome
-          <input type="search" name="busca" defaultValue={busca} placeholder="Buscar deputado" />
-        </label>
-        <label>
-          Estado
-          <select name="uf" defaultValue={uf}>
-            <option value="">Todos</option>
-            {UFS.map((u) => (
-              <option key={u} value={u}>{u}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Partido atual
-          <input type="text" name="partido" list="lista-partidos" defaultValue={partido} placeholder="Ex.: PT, PL" size={10} />
-          <datalist id="lista-partidos">
-            {nomesPartidos.map((p) => (
-              <option key={p} value={p} />
-            ))}
-          </datalist>
-        </label>
-        <label>
-          Mostrar
-          <select name="em_exercicio" defaultValue={todos ? "todos" : "true"}>
-            <option value="true">Em exercício</option>
-            <option value="todos">Todos desde 2023</option>
-          </select>
-        </label>
-        <button type="submit">Filtrar</button>
-      </form>
-
       {ehMetrica ? (
         <p className="muted">
           Mostrando quem tem pelo menos {formatInt(min)} {ordenarPor === "presenca_sessao" ? "sessões" : ordenarPor === "governismo" ? "votações com orientação do Governo" : "votações elegíveis"} no
@@ -108,40 +115,37 @@ export default async function Parlamentares({ searchParams }: { searchParams: Pr
       ) : null}
       <p className="muted" aria-live="polite">{plural(res.total, "deputado", "deputados")}.</p>
 
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Deputado</th>
-              <th className="num">Presença em sessões</th>
-              <th className="num">Votos nas nominais</th>
-              <th className="num">Alinhamento com o Governo</th>
-            </tr>
-          </thead>
-          <tbody>
-            {res.dados.map((p) => {
-              const m = p.metricas;
-              return (
-                <tr key={p.id}>
-                  <td><Pessoa id={p.id} nome={p.nome} url={p.url_foto} sub={[p.partido, p.uf].filter(Boolean).join(" · ")} /></td>
-                  <td className="num">
-                    <strong>{formatPct(m.presenca_sessao.pct)}</strong>
-                    <small>{formatInt(m.presenca_sessao.sessoes_presente)} de {formatInt(m.presenca_sessao.sessoes_elegiveis)} sessões</small>
-                  </td>
-                  <td className="num">
-                    <strong>{formatPct(m.participacao_votacoes_nominais.pct)}</strong>
-                    <small>{formatInt(m.participacao_votacoes_nominais.votacoes_votou)} de {formatInt(m.participacao_votacoes_nominais.votacoes_elegiveis)} votações</small>
-                  </td>
-                  <td className="num">
-                    <strong>{formatPct(m.alinhamento_governo.pct)}</strong>
-                    <small>{formatInt(m.alinhamento_governo.votacoes_alinhadas)} de {formatInt(m.alinhamento_governo.votacoes_com_orientacao)} votações</small>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <ul className="dep-grid">
+        {res.dados.map((p) => {
+          const m = p.metricas;
+          return (
+            <li key={p.id} className="dep-card">
+              <div className="dep-topo">
+                <Foto nome={p.nome} url={p.url_foto} tamanho={56} />
+                <div>
+                  <Link className="dep-nome" href={`/parlamentares/${p.id}`}>{p.nome}</Link>
+                  <small>
+                    {[p.partido, p.uf].filter(Boolean).join(" · ")}
+                    {!p.em_exercicio ? " · fora de exercício" : ""}
+                  </small>
+                </div>
+              </div>
+              <MiniMetrica
+                tom="presenca" rotulo="Presença em sessões" pct={m.presenca_sessao.pct} ativo={ordenarPor === "presenca_sessao"}
+                base={`${formatInt(m.presenca_sessao.sessoes_presente)} de ${formatInt(m.presenca_sessao.sessoes_elegiveis)} sessões`}
+              />
+              <MiniMetrica
+                tom="voto" rotulo="Votos nas nominais" pct={m.participacao_votacoes_nominais.pct} ativo={ordenarPor === "participacao"}
+                base={`${formatInt(m.participacao_votacoes_nominais.votacoes_votou)} de ${formatInt(m.participacao_votacoes_nominais.votacoes_elegiveis)} votações`}
+              />
+              <MiniMetrica
+                tom="governo" rotulo="Alinhamento com o Governo" pct={m.alinhamento_governo.pct} ativo={ordenarPor === "governismo"}
+                base={`${formatInt(m.alinhamento_governo.votacoes_alinhadas)} de ${formatInt(m.alinhamento_governo.votacoes_com_orientacao)} votações`}
+              />
+            </li>
+          );
+        })}
+      </ul>
 
       <Paginacao pagina={res.pagina} limite={res.limite} total={res.total} caminho="/parlamentares" params={filtros} />
     </>

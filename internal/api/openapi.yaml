@@ -18,6 +18,9 @@ paths:
   /api/v1/status:
     get:
       summary: Estado dos dados (última atualização, período e totais)
+      description: |
+        `medias_camara` traz os percentuais do conjunto da Câmara (todas as sessões e votações somadas, não a
+        média simples dos deputados), como referência para o percentual de cada deputado.
       responses:
         '200': { description: OK }
   /api/v1/proposicoes:

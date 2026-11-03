@@ -120,6 +120,15 @@ func TestMetricas_DatasetSintetico(t *testing.T) {
 		}
 	}
 
+	// Conjunto da Câmara: 5 votos em 9 elegibilidades; 3 alinhados em 4 com orientação.
+	st, err := s.GetStatus(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !igual(st.Medias.Participacao, f(55.56)) || !igual(st.Medias.Governismo, f(75)) {
+		t.Errorf("médias da Câmara: participação=%v governismo=%v, esperado 55,56 e 75", deref(st.Medias.Participacao), deref(st.Medias.Governismo))
+	}
+
 	// Por partido (partido do momento): PT = A(4 elegíveis) + B(2) = 6; presentes 4; base 3; alinhadas 2.
 	type part struct {
 		parl, eleg, pres, base int

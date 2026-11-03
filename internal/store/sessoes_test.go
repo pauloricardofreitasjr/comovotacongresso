@@ -91,6 +91,15 @@ func TestMetricas_PresencaSessao(t *testing.T) {
 		t.Errorf("PT: parlamentares=%d pct=%v", parl, pct)
 	}
 
+	// Conjunto da Câmara: 5 presenças em 9 elegibilidades.
+	st, err := s.GetStatus(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Medias.PresencaSessao == nil || *st.Medias.PresencaSessao < 55.55 || *st.Medias.PresencaSessao > 55.57 {
+		t.Errorf("média de presença da Câmara=%v, esperado 55,56", st.Medias.PresencaSessao)
+	}
+
 	// regravar a sessão substitui a lista (idempotente, sem acumular)
 	sessao(1, "2025-03-01", p(1, "PT"))
 	var total int

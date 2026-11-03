@@ -66,6 +66,13 @@ func toVotacaoLinha(l store.VotacaoLinha) votacaoLinha {
 
 // ---------- /status ----------
 
+// mediasDTO: percentuais do conjunto da Câmara (todas as sessões e votações somadas), referência para cada deputado.
+type mediasDTO struct {
+	PresencaSessao *float64 `json:"presenca_sessao"`
+	Participacao   *float64 `json:"participacao_votacoes_nominais"`
+	Governismo     *float64 `json:"alinhamento_governo"`
+}
+
 type statusDTO struct {
 	AtualizadoEm       *time.Time `json:"atualizado_em"`
 	PrimeiraVotacao    *time.Time `json:"primeira_votacao"`
@@ -75,6 +82,7 @@ type statusDTO struct {
 	Sessoes            int        `json:"sessoes_deliberativas"`
 	Parlamentares      int        `json:"parlamentares"`
 	Proposicoes        int        `json:"proposicoes"`
+	Medias             mediasDTO  `json:"medias_camara"`
 }
 
 func (a *API) status(w http.ResponseWriter, r *http.Request) {
@@ -84,7 +92,8 @@ func (a *API) status(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	escrever(w, http.StatusOK, statusDTO{st.AtualizadoEm, st.PrimeiraVotacao, st.UltimaVotacao, st.VotacoesNominais,
-		st.VotacoesSimbolicas, st.Sessoes, st.Parlamentares, st.Proposicoes})
+		st.VotacoesSimbolicas, st.Sessoes, st.Parlamentares, st.Proposicoes,
+		mediasDTO{st.Medias.PresencaSessao, st.Medias.Participacao, st.Medias.Governismo}})
 }
 
 // ---------- /proposicoes ----------

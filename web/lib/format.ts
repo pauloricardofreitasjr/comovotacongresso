@@ -106,3 +106,11 @@ export function inteiroPositivo(v: string | string[] | undefined, padrao: number
   const n = Number.parseInt(primeiro(v), 10);
   return Number.isFinite(n) && n > 0 ? n : padrao;
 }
+
+/** Compara o percentual de um deputado com o do conjunto da Câmara, em pontos percentuais. */
+export function compararComMedia(pct: number, media: number): string {
+  const d = Math.round((pct - media) * 10) / 10;
+  if (Math.abs(d) < 0.5) return "Na média da Câmara";
+  const pontos = `${Math.abs(d).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} ponto${Math.abs(d) < 2 ? "" : "s"}`;
+  return d > 0 ? `${pontos} acima da média da Câmara` : `${pontos} abaixo da média da Câmara`;
+}

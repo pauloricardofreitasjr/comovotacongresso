@@ -11,6 +11,7 @@ export type Status = {
   sessoes_deliberativas: number;
   parlamentares: number;
   proposicoes: number;
+  medias_camara: { presenca_sessao: number | null; participacao_votacoes_nominais: number | null; alinhamento_governo: number | null };
 };
 
 export type PropRef = {

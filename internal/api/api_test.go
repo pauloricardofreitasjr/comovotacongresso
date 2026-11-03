@@ -154,6 +154,15 @@ func TestStatus(t *testing.T) {
 		o["sessoes_deliberativas"].(float64) != 4 || o["parlamentares"].(float64) != 4 || o["proposicoes"].(float64) != 2 || o["atualizado_em"] == nil {
 		t.Fatalf("status=%d %v", code, o)
 	}
+	m, ok := o["medias_camara"].(map[string]any)
+	if !ok {
+		t.Fatalf("medias_camara ausente: %v", o)
+	}
+	for _, k := range []string{"presenca_sessao", "participacao_votacoes_nominais", "alinhamento_governo"} {
+		if v, ok := m[k].(float64); !ok || v < 0 || v > 100 {
+			t.Errorf("medias_camara.%s=%v", k, m[k])
+		}
+	}
 }
 
 func TestProposicoes_ListaFiltrosEPaginacao(t *testing.T) {

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { formatInt, formatPct, iniciais, infoVoto, query, rotuloResultado } from "@/lib/format";
+import { compararComMedia, formatInt, formatPct, iniciais, infoVoto, query, rotuloResultado } from "@/lib/format";
 import type { ResumoVotos, TipoVotacao } from "@/lib/types";
 
 export function TipoBadge({ tipo }: { tipo: TipoVotacao }) {
@@ -50,21 +50,47 @@ export function Pessoa({ id, nome, url, sub, tamanho }: { id: number; nome: stri
   );
 }
 
-/** Cartão de uma métrica. Mostra sempre o percentual E a base de cálculo. */
+export type Tom = "presenca" | "voto" | "governo";
+
+/** Cartão de uma métrica. Mostra sempre o percentual E a base de cálculo; com `media`, marca a média da Câmara na barra. */
 export function Metrica({
-  rotulo, pct, base, ajuda, destaque,
-}: { rotulo: string; pct: number | null; base: string; ajuda: string; destaque?: boolean }) {
+  rotulo, pct, base, ajuda, tom, media,
+}: { rotulo: string; pct: number | null; base: string; ajuda: string; tom: Tom; media?: number | null }) {
   return (
-    <div className={`card metrica${destaque ? " destaque" : ""}`}>
+    <div className={`card metrica tom-${tom}`}>
       <span className="rotulo">{rotulo}</span>
       <span className="valor">{formatPct(pct)}</span>
       {pct !== null ? (
         <span className="medidor" role="presentation">
           <span style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
+          {media != null ? <i className="marca" style={{ left: `${Math.min(100, Math.max(0, media))}%` }} /> : null}
         </span>
       ) : null}
       <span className="base">{pct === null ? "Sem dados suficientes" : base}</span>
+      {pct !== null && media != null ? (
+        <span className="comparacao">
+          {compararComMedia(pct, media)} <small>({formatPct(media)})</small>
+        </span>
+      ) : null}
       <span className="ajuda">{ajuda}</span>
+    </div>
+  );
+}
+
+/** Linha compacta de uma métrica, para cartões de lista. `ativo` destaca a medida pela qual a lista está ordenada. */
+export function MiniMetrica({
+  rotulo, pct, base, tom, ativo,
+}: { rotulo: string; pct: number | null; base: string; tom: Tom; ativo?: boolean }) {
+  return (
+    <div className={`mini tom-${tom}${ativo ? " ativo" : ""}`}>
+      <div className="mini-topo">
+        <span>{rotulo}</span>
+        <strong>{formatPct(pct)}</strong>
+      </div>
+      <span className="medidor" role="presentation">
+        {pct !== null ? <span style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} /> : null}
+      </span>
+      <small>{pct === null ? "Sem dados suficientes" : base}</small>
     </div>
   );
 }

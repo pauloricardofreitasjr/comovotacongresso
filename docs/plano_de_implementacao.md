@@ -33,6 +33,8 @@ Baseado em `documento_de_arquitetura_e_especifica_o_t_cnica.md`. O repositório 
 
 - **Presença oficial em sessão:** incluída como métrica separada (migration `00003`, `etl sessoes`), com nome próprio e ao lado da participação nas votações nominais.
 
+- **API (Fase 3):** OpenAPI escrita à mão com teste que garante que descreve exatamente as rotas registradas. Rate limiting fica para o proxy/CDN (Fase 6), pois atrás de CDN o IP do cliente vem de cabeçalho que a aplicação não deve confiar.
+
 ## 1. Lacunas e decisões a fechar antes/durante (encontradas no doc)
 
 > Discovery feito em 2026-11-02: ver `docs/discovery/README.md`. Os itens abaixo marcam o que mudou.
@@ -79,8 +81,8 @@ Baseado em `documento_de_arquitetura_e_especifica_o_t_cnica.md`. O repositório 
 - Refresh ao fim de cada ciclo do ETL (§5 passo 3).
 - **Testes:** dataset sintético com resultados esperados calculados à mão (inclui `liberado`, abstenção, parlamentar ausente, troca de partido).
 
-### Fase 3 — API (≈2–3 dias)
-- Endpoints do §6 sob `/api/v1`, com validação (`go-playground/validator`), paginação e filtros; `ordenarPor=presenca|governismo` lê das MVs (nunca agrega on the fly, §7.4).
+### Fase 3 — API (≈2–3 dias) — **concluída**; ver README (tabela de rotas) e `internal/api/openapi.yaml`
+- Endpoints do §6 sob `/api/v1`, com validação (`go-playground/validator`), paginação e filtros; `ordenarPor=nome|participacao|presenca_sessao|governismo` lê das MVs (nunca agrega on the fly, §7.4).
 - `/votacoes/{id}`: para `simbolica`, **não** retorna lista de votos, só metadados + orientações + flag `tipo`.
 - OpenAPI gerado, CORS, rate limit básico, healthcheck.
 - **Testes:** integração com Postgres de teste.

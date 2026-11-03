@@ -1,0 +1,120 @@
+openapi: 3.0.3
+info:
+  title: Como Vota Congresso — API
+  version: 1.0.0
+  description: |
+    API pública e somente leitura com as votações do Plenário da Câmara dos Deputados.
+    Dados: Dados Abertos da Câmara dos Deputados. Atualização diária.
+
+    **Três métricas, três significados — não as confunda:**
+    - `participacao_votacoes_nominais`: votos registrados nas votações *nominais* em que o parlamentar estava em exercício.
+    - `presenca_sessao`: presença oficial registrada em sessões deliberativas do Plenário.
+    - `alinhamento_governo`: % de votos iguais à orientação do Governo (só votações com orientação Sim/Não).
+
+    Cada métrica traz as contagens que a sustentam. Metodologia: `docs/metodologia.md`.
+servers:
+  - url: /
+paths:
+  /api/v1/status:
+    get:
+      summary: Estado dos dados (última atualização, período e totais)
+      responses:
+        '200': { description: OK }
+  /api/v1/proposicoes:
+    get:
+      summary: Proposições que tiveram votação no Plenário, da mais recente para a mais antiga
+      parameters:
+        - { name: tipo, in: query, schema: { type: string }, description: 'Sigla (PL, PEC, PLP...)' }
+        - { name: ano, in: query, schema: { type: integer } }
+        - { name: numero, in: query, schema: { type: integer } }
+        - { name: busca, in: query, schema: { type: string, maxLength: 100 }, description: 'Texto da ementa (sem acento, sem diferenciar maiúsculas)' }
+        - { name: pagina, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: limite, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200': { description: Página de proposições }
+        '400': { $ref: '#/components/responses/Erro' }
+  /api/v1/proposicoes/{id}:
+    get:
+      summary: Proposição e a linha do tempo de suas votações
+      description: |
+        `votacoes` vem em ordem cronológica. `principal` marca a votação em destaque: entre as nominais com
+        vínculo direto, a de mais votos (empate: a mais recente); sem nominais, a direta mais recente.
+        É uma heurística de apresentação.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: OK }
+        '400': { $ref: '#/components/responses/Erro' }
+        '404': { $ref: '#/components/responses/Erro' }
+  /api/v1/votacoes/{id}:
+    get:
+      summary: Votação, orientações das bancadas e votos individuais
+      description: |
+        Em votação **simbólica** não existe voto individual: `votos_individuais` é `false`, `votos` e
+        `resumo_votos` são `null`. `vinculo_confianca` = `provavel` indica que a proposição foi inferida
+        (comum em votações de procedimento).
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string }, example: '2635476-36' }
+      responses:
+        '200': { description: OK }
+        '400': { $ref: '#/components/responses/Erro' }
+        '404': { $ref: '#/components/responses/Erro' }
+  /api/v1/parlamentares:
+    get:
+      summary: Parlamentares com métricas (ranking)
+      description: |
+        Por padrão lista só quem está em exercício. Ordenar por uma métrica põe quem não tem o dado no fim.
+        `min_votacoes` exige um mínimo do denominador da métrica escolhida em `ordenarPor`, evitando
+        rankings dominados por quem tem poucas votações.
+      parameters:
+        - { name: casa, in: query, schema: { type: string, enum: [camara, senado] } }
+        - { name: partido, in: query, schema: { type: string }, description: 'Partido atual' }
+        - { name: uf, in: query, schema: { type: string, maxLength: 2 } }
+        - { name: busca, in: query, schema: { type: string, maxLength: 100 }, description: 'Nome (sem acento)' }
+        - { name: em_exercicio, in: query, schema: { type: string, enum: ['true', 'false', todos], default: 'true' } }
+        - { name: ordenarPor, in: query, schema: { type: string, enum: [nome, participacao, presenca_sessao, governismo], default: nome } }
+        - { name: ordem, in: query, schema: { type: string, enum: [asc, desc] }, description: 'Padrão: asc para nome, desc para métricas' }
+        - { name: min_votacoes, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: pagina, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: limite, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200': { description: Página de parlamentares }
+        '400': { $ref: '#/components/responses/Erro' }
+  /api/v1/parlamentares/{id}:
+    get:
+      summary: Perfil do parlamentar, períodos de exercício e histórico de votos
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - { name: page_votos, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: limite_votos, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200': { description: OK }
+        '400': { $ref: '#/components/responses/Erro' }
+        '404': { $ref: '#/components/responses/Erro' }
+  /api/v1/partidos:
+    get:
+      summary: Métricas por partido (o partido de cada voto/sessão, não o atual)
+      parameters:
+        - { name: casa, in: query, schema: { type: string, enum: [camara, senado] } }
+      responses:
+        '200': { description: OK }
+        '400': { $ref: '#/components/responses/Erro' }
+  /api/v1/openapi.yaml:
+    get:
+      summary: Esta especificação
+      responses:
+        '200': { description: OK }
+components:
+  responses:
+    Erro:
+      description: Erro
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              erro:
+                type: object
+                properties:
+                  codigo: { type: string, example: parametro_invalido }
+                  mensagem: { type: string }

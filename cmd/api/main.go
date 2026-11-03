@@ -11,11 +11,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"comovotacongresso/internal/api"
 	"comovotacongresso/internal/config"
+	"comovotacongresso/internal/store"
 )
 
 func main() {
@@ -41,8 +41,11 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           router(pool),
+		Handler:           api.Router(store.New(pool), pool, slog.Default()),
 		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      35 * time.Second, // acima do timeout de 30s do handler
+		IdleTimeout:       60 * time.Second,
 	}
 	go func() {
 		<-ctx.Done()
@@ -56,24 +59,4 @@ func run() error {
 		return err
 	}
 	return nil
-}
-
-type pinger interface {
-	Ping(context.Context) error
-}
-
-func router(db pinger) http.Handler {
-	r := chi.NewRouter()
-	r.Use(middleware.RequestID, middleware.Recoverer, middleware.Timeout(30*time.Second))
-
-	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
-		defer cancel()
-		if err := db.Ping(ctx); err != nil {
-			http.Error(w, "db indisponível", http.StatusServiceUnavailable)
-			return
-		}
-		w.Write([]byte("ok"))
-	})
-	return r
 }

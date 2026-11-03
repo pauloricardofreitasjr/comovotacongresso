@@ -15,6 +15,22 @@ make psql      # shell no banco
 make down
 ```
 
+## API
+
+`DATABASE_URL=... HTTP_ADDR=:8080 go run ./cmd/api` — somente leitura, JSON, em `/api/v1`. Especificação em `/api/v1/openapi.yaml` ([fonte](internal/api/openapi.yaml)).
+
+| Rota | O que devolve |
+|---|---|
+| `GET /api/v1/status` | última atualização, período e totais |
+| `GET /api/v1/proposicoes` | proposições com votação (`tipo`, `ano`, `numero`, `busca`, `pagina`, `limite`) |
+| `GET /api/v1/proposicoes/{id}` | proposição + linha do tempo das votações (`principal` em destaque) |
+| `GET /api/v1/votacoes/{id}` | votação, orientações e votos individuais (só nominais) |
+| `GET /api/v1/parlamentares` | ranking (`partido`, `uf`, `busca`, `em_exercicio`, `ordenarPor`, `ordem`, `min_votacoes`) |
+| `GET /api/v1/parlamentares/{id}` | perfil, métricas, exercício e histórico de votos (`page_votos`, `limite_votos`) |
+| `GET /api/v1/partidos` | métricas por partido |
+
+Cada parlamentar traz três métricas **distintas**, sempre com as contagens: `participacao_votacoes_nominais`, `presenca_sessao` (oficial) e `alinhamento_governo`. `{id}` de proposição e parlamentar é o id interno; o de votação é o da Câmara (`2635476-36`). Erros: `{"erro":{"codigo","mensagem"}}`. Respostas levam `Cache-Control` (dados mudam 1x/dia) e CORS aberto; rate limiting fica no proxy/CDN.
+
 ## Ingestão (ETL da Câmara)
 
 Variáveis: `DATABASE_URL` (obrigatória), `CAMARA_BASE_URL` e `CAMARA_MIN_INTERVAL_MS` (padrão 150) opcionais. Com `go run ./cmd/etl <comando>` ou `bin/etl`:

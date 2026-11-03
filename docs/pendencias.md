@@ -10,7 +10,7 @@ Estado em 2026-11-03, após as Fases 0 a 4 e a revisão do site. Itens ordenados
 | **Licença das fotos:** pedir confirmação por escrito à Câmara (e ao Senado na v1.1). Ver `discovery/README.md` §3.3 | Responsável |
 | **Fotos copiadas para o nosso storage:** a decisão foi copiar, mas o site hoje **carrega direto do portal da Câmara**; a cópia não foi implementada | Claude, depois da licença |
 | **Crédito de fonte nas fotos:** implementado com o texto da pesquisa (rodapé e perfis). Falta só trocar pelo texto que a Câmara indicar, se ela indicar outro | Responsável, junto com a resposta da Câmara |
-| **Metodologia:** revisar as seções novas (4 e 4.1) e preencher os colchetes de `metodologia.md`: canal de contato, histórico de versões, se o código será aberto, crédito das fotos | Responsável |
+| **Metodologia:** revisar as seções novas (4 e 4.1) e preencher os colchetes de `metodologia.md`: canal de contato, histórico de versões, crédito das fotos | Responsável |
 | **Decidir indexação:** hoje o `robots.txt` permite tudo | Responsável |
 
 ## Sensível ao tempo

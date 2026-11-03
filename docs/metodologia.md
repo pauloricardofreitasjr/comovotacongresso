@@ -98,7 +98,7 @@ Por isso, todas as taxas deste site se baseiam **somente em votações nominais*
 
 - Os dados vêm da Câmara; erros ou atrasos na fonte aparecem aqui também.
 - Pequenas diferenças em relação a outros sites podem ocorrer por causa do período considerado, das votações incluídas ou do momento da atualização.
-- Os cálculos são feitos por código aberto `[confirmar se o repositório será público]`; qualquer pessoa pode conferir as regras.
+- Os cálculos são feitos por código aberto, publicado em <https://github.com/pauloricardofreitasjr/comovotacongresso>; qualquer pessoa pode conferir as regras.
 
 ## 8. Contato e correções
 

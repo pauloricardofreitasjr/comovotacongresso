@@ -3,7 +3,7 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { formatData, inteiroPositivo, plural, primeiro, query } from "@/lib/format";
 import { IconBusca } from "@/components/icons";
-import { limpar, MiniPlacar, Paginacao, ResultadoBadge } from "@/components/ui";
+import { limpar, MiniPlacar, NotasDoPlacar, Paginacao, ResultadoBadge } from "@/components/ui";
 import { interpretarIdentificacao, TIPOS_CONHECIDOS } from "@/lib/busca";
 
 export const metadata: Metadata = { title: "Leis e projetos votados" };
@@ -93,6 +93,7 @@ export default async function Proposicoes({ searchParams }: { searchParams: Prom
                     <span>{formatData(un.data_hora)}</span>
                   </div>
                   <MiniPlacar sim={un.sim} nao={un.nao} />
+                  <NotasDoPlacar curta aprovada={un.aprovada} resumo={un} votacaoId={un.votacao_id} />
                 </div>
               ) : (
                 <div className="meta">

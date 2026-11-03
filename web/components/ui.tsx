@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { compararComMedia, formatInt, formatPct, iniciais, infoVoto, query, rotuloResultado } from "@/lib/format";
+import { divergeDaDescricao, notaResultado, resultadoCoerente } from "@/lib/resultado";
 import type { ResumoVotos, TipoVotacao } from "@/lib/types";
 
 export function TipoBadge({ tipo }: { tipo: TipoVotacao }) {
@@ -176,6 +177,52 @@ export function Placar({ resumo }: { resumo: ResumoVotos }) {
         </ul>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Avisos sobre o placar: por que o resultado oficial destoa dos votos e quando a descrição oficial traz outro placar.
+ * `curta` mostra só uma linha com link para a explicação completa (listas e home).
+ */
+export function NotasDoPlacar({
+  aprovada, resumo, descricao, votacaoId, curta, ancora,
+}: { aprovada: boolean | null; resumo: Pick<ResumoVotos, "sim" | "nao">; descricao?: string; votacaoId?: string; curta?: boolean; ancora?: boolean }) {
+  const nota = notaResultado(aprovada, resumo);
+  const diverge = descricao ? divergeDaDescricao(descricao, resumo) : null;
+  if (curta) {
+    return nota && votacaoId ? (
+      <p className="nota-curta">
+        {nota.curta} <Link href={`/votacoes/${encodeURIComponent(votacaoId)}#nota-resultado`}>Entenda</Link>
+      </p>
+    ) : null;
+  }
+  // Com divergência, o resultado oficial pode seguir o placar da descrição e não os votos registrados:
+  // a explicação de "maioria especial" seria errada, então só o aviso de divergência aparece.
+  const notaVisivel = diverge ? null : nota;
+  const idNota = ancora ? "nota-resultado" : undefined;
+  const coerenteComDescricao = diverge ? resultadoCoerente(aprovada, diverge) : null;
+  const coerenteComVotos = diverge ? resultadoCoerente(aprovada, resumo) : null;
+  return (
+    <>
+      {notaVisivel ? (
+        <div className="aviso" id={idNota}>
+          <p><strong>{notaVisivel.titulo}</strong></p>
+          <p>{notaVisivel.texto}</p>
+        </div>
+      ) : null}
+      {diverge ? (
+        <div className="aviso atencao" id={notaVisivel ? undefined : idNota}>
+          <p>
+            <strong>O placar da descrição oficial é diferente dos votos registrados.</strong> A descrição diz Sim: {formatInt(diverge.sim)}, Não:{" "}
+            {formatInt(diverge.nao)}; os votos individuais somam Sim: {formatInt(resumo.sim)}, Não: {formatInt(resumo.nao)}.{" "}
+            {coerenteComDescricao === true && coerenteComVotos === false
+              ? "O resultado oficial combina com o placar da descrição, não com os votos individuais. "
+              : ""}
+            A Câmara é a fonte das duas informações e não sabemos qual está certa. Mostramos os votos como ela os registrou.
+          </p>
+        </div>
+      ) : null}
+    </>
   );
 }
 

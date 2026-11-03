@@ -8,7 +8,7 @@ import type { Voto } from "@/lib/types";
 import { Compartilhar } from "@/components/Compartilhar";
 import { metaCompartilhavel, resumir } from "@/lib/compartilhar";
 import { SITE_URL } from "@/lib/site";
-import { Aviso, limpar, Pessoa, Paginacao, Placar, ResultadoBadge, TipoBadge, VotoChip } from "@/components/ui";
+import { Aviso, limpar, NotasDoPlacar, Pessoa, Paginacao, Placar, ResultadoBadge, TipoBadge, VotoChip } from "@/components/ui";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
@@ -122,6 +122,7 @@ export default async function Votacao({ params, searchParams }: Props) {
         <section aria-labelledby="placar">
           <h2 id="placar">Placar</h2>
           <Placar resumo={v.resumo_votos} />
+          <NotasDoPlacar aprovada={v.aprovada} resumo={v.resumo_votos} descricao={v.descricao} ancora />
           {v.resumo_votos.outro > 0 ? (
             <Aviso atencao>
               <p>

@@ -21,6 +21,7 @@ Estado em 2026-11-03, após as Fases 0 a 4 e a revisão do site. Itens ordenados
 ## Dados a validar ou decidir
 
 - Por que líderes como Antonio Brito têm 100% de presença em sessão e 35% de voto nas nominais. São medidas diferentes (explicado em `discovery/README.md` §3.5), mas a **causa não foi investigada**.
+- **MPV 1151/2022 e PL 5230/2023 (Emenda 40):** a descrição oficial e a lista de votos da Câmara divergem (ver `discovery/README.md` §3.5). O site avisa, mas vale reportar à Câmara; decisão do responsável.
 - 887 votos sem posição na fonte (2 votações, `tipoVoto` nulo) contam como participação. Confirmar que é isso mesmo.
 - 1.650 vínculos "prováveis" com a proposição, quase todos de votações de procedimento. Amostrar para avaliar a qualidade da inferência.
 - A heurística da "votação principal" foi validada em um único exemplo.

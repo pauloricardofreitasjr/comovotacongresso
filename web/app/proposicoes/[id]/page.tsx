@@ -6,7 +6,7 @@ import type { VotacaoLinha } from "@/lib/types";
 import { Compartilhar } from "@/components/Compartilhar";
 import { metaCompartilhavel, resumir } from "@/lib/compartilhar";
 import { SITE_URL } from "@/lib/site";
-import { Aviso, BarraVotos, limpar, Placar, ResultadoBadge, TipoBadge } from "@/components/ui";
+import { Aviso, BarraVotos, limpar, NotasDoPlacar, Placar, ResultadoBadge, TipoBadge } from "@/components/ui";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -70,7 +70,10 @@ export default async function Proposicao({ params }: Props) {
               </Aviso>
             ) : null}
             {destaque.resumo_votos ? (
-              <Placar resumo={destaque.resumo_votos} />
+              <>
+                <Placar resumo={destaque.resumo_votos} />
+                <NotasDoPlacar aprovada={destaque.aprovada} resumo={destaque.resumo_votos} descricao={destaque.descricao} />
+              </>
             ) : (
               <p className="muted" style={{ margin: 0 }}>Votação simbólica: não há voto individual registrado, só o resultado.</p>
             )}

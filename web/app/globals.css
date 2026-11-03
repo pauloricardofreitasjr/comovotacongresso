@@ -398,3 +398,5 @@ details summary { cursor: pointer; font-weight: 600; }
   .partido-linha { grid-template-columns: 1fr; }
   .partido-linha .numeros { grid-column: 1; }
 }
+
+.nota-curta { margin: 0; font-size: .9rem; color: var(--neutro-text); font-weight: 600; }

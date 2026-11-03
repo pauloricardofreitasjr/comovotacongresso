@@ -3,7 +3,7 @@ import { api } from "@/lib/api";
 import { formatData, formatInt, plural } from "@/lib/format";
 import type { VotacaoLinha } from "@/lib/types";
 import { IconBusca, IconGoverno, IconPresenca, IconVoto } from "@/components/icons";
-import { limpar, Placar, ResultadoBadge } from "@/components/ui";
+import { limpar, NotasDoPlacar, Placar, ResultadoBadge } from "@/components/ui";
 
 const TEMAS = ["Imposto de renda", "Educação", "Saúde", "Segurança", "Meio ambiente", "Trabalho"];
 
@@ -75,6 +75,7 @@ export default async function Home() {
               <ResultadoBadge aprovada={destaque.votacao.aprovada} />
             </div>
             <Placar resumo={destaque.votacao.resumo_votos} />
+            <NotasDoPlacar curta aprovada={destaque.votacao.aprovada} resumo={destaque.votacao.resumo_votos} votacaoId={destaque.votacao.id} />
             <p style={{ margin: 0 }}>
               <Link className="button" href={`/votacoes/${encodeURIComponent(destaque.votacao.id)}`}>Ver como cada deputado votou</Link>
             </p>

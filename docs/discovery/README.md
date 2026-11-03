@@ -138,6 +138,11 @@ A presença oficial da Câmara é por **sessão** (registro de presença), dispo
 - As duas métricas são mantidas separadas, com nomes próprios (`pct_presenca_sessao` e `pct_participacao`).
 - **Siglas de partido na lista de presença divergem das do exercício** ("Republican", "Podemos", "Solidaried", "União" contra REPUBLICANOS, PODE, SOLIDARIEDADE, UNIÃO). Agrupar por partido pela grafia da presença dividia cada partido em dois grupos e mostrava 0% de presença para vários na página de partidos (achado em revisão de UX, nov/2026). A migration `00004` passou a agrupar pela sigla do exercício; a presença por parlamentar não mudou (média 92,3%).
 
+### Placar da descrição oficial × votos registrados (nov/2026)
+
+- **1.073 das 1.079 votações nominais** trazem "Sim: N; Não: N" na descrição; em **1.069** o placar bate exatamente com os votos gravados. As 4 que divergem: **PDL 995/2026** e **OBJ 2/2025** (votos sem posição, `tipoVoto` nulo, já conhecidos), **MPV 1151/2022** (337 × 27 gravado, 327 × 27 na descrição) e **PL 5230/2023, Emenda 40** (315 × 87 gravado, 35 × 375 na descrição, resultado "Rejeitada", coerente com a descrição). Conferido direto na API da Câmara: **o banco reproduz a fonte** (315 × 87 e 337 × 27); a inconsistência está nos dados da Câmara. O site avisa quando isso acontece.
+- **Resultado oficial que não segue "mais Sim que Não":** 10 votações rejeitadas com mais Sim que Não (7 PL, 1 PLP, 1 PDL, 1 REP; 6 delas são requerimentos de urgência, 236 a 254 Sim, abaixo dos 257 da maioria absoluta) e 1 aprovada em empate (PL 1625/2026, 182 × 182, descrição "Resultado."). O site mostra uma nota explicando que existem regras de maioria especial e desempate, sem afirmar qual valeu em cada caso.
+
 ## 4. Ainda em aberto (não resolvido por Swagger nem por amostra)
 
 - Mapa partido→bloco/federação por votação e por legislatura (Câmara: ver `/blocos` e `/partidos/{id}`; Senado: `Bloco` em `senador/lista/atual` + `composicao/lista/partidos`).

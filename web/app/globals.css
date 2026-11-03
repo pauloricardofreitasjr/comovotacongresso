@@ -375,3 +375,7 @@ details summary { cursor: pointer; font-weight: 600; }
 .mini-placar-txt { font-size: .9rem; }
 .txt-sim { color: var(--sim-text); }
 .txt-nao { color: var(--nao-text); }
+
+.partido-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: .5rem; }
+.partido-topo .dep-nome { font-size: 1.25rem; display: block; }
+.partido-topo small { display: block; }

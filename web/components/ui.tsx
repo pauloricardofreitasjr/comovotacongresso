@@ -79,8 +79,8 @@ export function Metrica({
 
 /** Linha compacta de uma métrica, para cartões de lista. `ativo` destaca a medida pela qual a lista está ordenada. */
 export function MiniMetrica({
-  rotulo, pct, base, tom, ativo,
-}: { rotulo: string; pct: number | null; base: string; tom: Tom; ativo?: boolean }) {
+  rotulo, pct, base, tom, ativo, media,
+}: { rotulo: string; pct: number | null; base: string; tom: Tom; ativo?: boolean; media?: number | null }) {
   return (
     <div className={`mini tom-${tom}${ativo ? " ativo" : ""}`}>
       <div className="mini-topo">
@@ -89,6 +89,7 @@ export function MiniMetrica({
       </div>
       <span className="medidor" role="presentation">
         {pct !== null ? <span style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} /> : null}
+        {pct !== null && media != null ? <i className="marca" style={{ left: `${Math.min(100, Math.max(0, media))}%` }} /> : null}
       </span>
       <small>{pct === null ? "Sem dados suficientes" : base}</small>
     </div>

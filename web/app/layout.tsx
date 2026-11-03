@@ -4,6 +4,7 @@ import "./globals.css";
 import { NavLink } from "@/components/NavLink";
 import { api } from "@/lib/api";
 import { formatDataHora } from "@/lib/format";
+import { CREDITO_FOTOS_RODAPE } from "@/lib/creditos";
 
 // Os dados vêm da API em tempo de requisição (com cache de 5 min nos fetch); o build não depende dela.
 export const dynamic = "force-dynamic";
@@ -56,6 +57,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               Fonte dos dados: <strong>Câmara dos Deputados</strong> (Dados Abertos), votações do Plenário desde fevereiro de 2023.
               {atualizado ? ` Última atualização: ${formatDataHora(atualizado)}.` : ""}
             </p>
+            <p>{CREDITO_FOTOS_RODAPE}</p>
             <p>
               Os números dependem de regras explicadas em <Link href="/metodologia">Como calculamos</Link>. Projeto independente, sem vínculo com a
               Câmara dos Deputados.

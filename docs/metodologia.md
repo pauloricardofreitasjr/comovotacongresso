@@ -9,7 +9,7 @@ O **Como Vota Congresso** mostra como cada deputado federal votou no Plenário d
 - **Fonte:** Dados Abertos da Câmara dos Deputados (`dadosabertos.camara.leg.br`). Fonte dos dados: Câmara dos Deputados.
 - **Período:** votações a partir de 1º de fevereiro de 2023 (início da 57ª Legislatura).
 - **Atualização:** uma vez por dia, de madrugada. Uma votação feita hoje costuma aparecer amanhã. A data da última atualização aparece no rodapé do site.
-- **Fotos:** publicadas pela Câmara dos Deputados. `[Confirmar texto de crédito após resposta formal da Câmara.]`
+- **Fotos:** publicadas pelo portal da Câmara dos Deputados e exibidas sem edição. O crédito aparece no rodapé e em cada perfil.
 - Não corrigimos nem alteramos os dados. Se a Câmara corrigir um registro, a correção chega ao site no ciclo seguinte.
 - **Senado:** ainda não está no site. `[Texto a ajustar quando o Senado entrar.]`
 

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { formatData, formatDataHora, formatInt, inteiroPositivo, rotuloAlinhamento, rotuloOrientacao } from "@/lib/format";
 import { Aviso, Foto, limpar, Metrica, Paginacao, VotoChip } from "@/components/ui";
+import { CREDITO_FOTO } from "@/lib/creditos";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
@@ -27,7 +28,10 @@ export default async function Parlamentar({ params, searchParams }: Props) {
         <Link href="/parlamentares">Deputados</Link> › {p.nome}
       </p>
       <div className="perfil-topo">
-        <Foto nome={p.nome} url={p.url_foto} tamanho={88} />
+        <figure className="perfil-foto">
+          <Foto nome={p.nome} url={p.url_foto} tamanho={88} />
+          {p.url_foto ? <figcaption>{CREDITO_FOTO}</figcaption> : null}
+        </figure>
         <div>
           <h1 style={{ marginBottom: ".25rem" }}>{p.nome}</h1>
           <div className="meta">

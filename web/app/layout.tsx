@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import "./globals.css";
+import { IconLogo } from "@/components/icons";
 import { NavLink } from "@/components/NavLink";
 import { api } from "@/lib/api";
 import { formatDataHora } from "@/lib/format";
@@ -38,7 +39,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <header className="site-header">
           <div className="container">
             <Link className="brand" href="/">
-              Como Vota <span>Congresso</span>
+              <IconLogo />
+              <span>
+                Como Vota <span className="destaque">Congresso</span>
+              </span>
             </Link>
             <nav className="nav" aria-label="Principal">
               <NavLink href="/proposicoes">Leis e projetos</NavLink>

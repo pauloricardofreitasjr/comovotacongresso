@@ -100,6 +100,38 @@ export function BarraVotos({ resumo }: { resumo: ResumoVotos }) {
   );
 }
 
+/** Placar em destaque: Sim e Não grandes, com percentual e contagem; os demais votos viram etiquetas. */
+export function Placar({ resumo }: { resumo: ResumoVotos }) {
+  const pct = (n: number) => formatPct(resumo.total > 0 ? (n / resumo.total) * 100 : null);
+  const outros = SEGMENTOS.filter((s) => s.chave !== "sim" && s.chave !== "nao" && resumo[s.chave] > 0);
+  return (
+    <div>
+      <div className="placar">
+        <div className="placar-lado sim">
+          <span className="placar-n">{formatInt(resumo.sim)}</span>
+          <span className="placar-r">votaram Sim</span>
+          <span className="placar-p">{pct(resumo.sim)} dos {formatInt(resumo.total)} votos</span>
+        </div>
+        <div className="placar-lado nao">
+          <span className="placar-n">{formatInt(resumo.nao)}</span>
+          <span className="placar-r">votaram Não</span>
+          <span className="placar-p">{pct(resumo.nao)} dos {formatInt(resumo.total)} votos</span>
+        </div>
+      </div>
+      <BarraVotos resumo={resumo} />
+      {outros.length > 0 ? (
+        <ul className="chips-votos" aria-label="Outros votos">
+          {outros.map((s) => (
+            <li key={s.chave} className={`chip-voto ${s.classe}`}>
+              {s.rotulo}: <strong>{formatInt(resumo[s.chave])}</strong>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 /** Paginação por links (sem JavaScript). */
 export function Paginacao({
   pagina, limite, total, caminho, params, nomePagina = "pagina",

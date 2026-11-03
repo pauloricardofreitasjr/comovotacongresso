@@ -87,7 +87,7 @@ Baseado em `documento_de_arquitetura_e_especifica_o_t_cnica.md`. O repositório 
 - OpenAPI gerado, CORS, rate limit básico, healthcheck.
 - **Testes:** integração com Postgres de teste.
 
-### Fase 4 — Frontend (≈4–5 dias)
+### Fase 4 — Frontend (≈4–5 dias) — **concluída** (MVP); ver README. Pendências: verificar layout em celular real, favicon/Open Graph por página, acessibilidade com leitor de tela
 - Páginas: listagem de proposições (busca/filtros), detalhe de proposição (linha do tempo de votações), detalhe de votação, ranking de parlamentares, perfil do parlamentar (KPIs + histórico paginado).
 - Componentes distintos para nominal vs simbólica: badge e ocultação da lista individual na simbólica (§7.3).
 - Estados de carregamento/vazio/erro, responsivo, acessibilidade básica.

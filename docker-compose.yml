@@ -24,5 +24,30 @@ services:
       db:
         condition: service_healthy
 
+  api:
+    build: .
+    command: ["/app/api"]
+    environment:
+      DATABASE_URL: postgres://comovota:comovota@db:5432/comovota?sslmode=disable
+      HTTP_ADDR: ":8080"
+    ports:
+      - "8080:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    profiles: ["app"]
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    environment:
+      API_URL: http://api:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    profiles: ["app"]
+
 volumes:
   pgdata:

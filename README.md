@@ -31,6 +31,20 @@ make down
 
 Cada parlamentar traz três métricas **distintas**, sempre com as contagens: `participacao_votacoes_nominais`, `presenca_sessao` (oficial) e `alinhamento_governo`. `{id}` de proposição e parlamentar é o id interno; o de votação é o da Câmara (`2635476-36`). Erros: `{"erro":{"codigo","mensagem"}}`. Respostas levam `Cache-Control` (dados mudam 1x/dia) e CORS aberto; rate limiting fica no proxy/CDN.
 
+## Site (Next.js)
+
+Em `web/` (Next.js 16, React 19, TypeScript). Renderiza no servidor a partir da API Go (`API_URL`, padrão `http://localhost:8080`; o navegador nunca fala direto com ela) e reaproveita as respostas por 5 min.
+
+```bash
+cd web && npm ci
+API_URL=http://localhost:8080 npm run dev      # http://localhost:3000
+npm run lint && npm run typecheck && npm test  # o que a CI roda, mais npm run build
+```
+
+Telas: início, leis e projetos (busca e filtros), linha do tempo da proposição, votação (nominal ou simbólica, com placar, orientações, partidos e deputados filtráveis), deputados (rankings), perfil, partidos e metodologia (renderiza `docs/metodologia.md`; `METODOLOGIA_PATH` aponta o arquivo em produção). Sem JavaScript de cliente além do destaque da navegação: filtros e paginação são formulários e links.
+
+Stack completa em containers: `docker compose --profile app up --build` (site em `:3000`, API em `:8080`).
+
 ## Ingestão (ETL da Câmara)
 
 Variáveis: `DATABASE_URL` (obrigatória), `CAMARA_BASE_URL` e `CAMARA_MIN_INTERVAL_MS` (padrão 150) opcionais. Com `go run ./cmd/etl <comando>` ou `bin/etl`:

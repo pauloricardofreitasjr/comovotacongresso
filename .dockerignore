@@ -1,0 +1,6 @@
+.git
+bin/
+coverage.out
+web/node_modules
+web/.next
+docs/discovery/raw

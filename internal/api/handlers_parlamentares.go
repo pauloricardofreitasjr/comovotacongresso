@@ -168,7 +168,15 @@ func (a *API) getParlamentar(w http.ResponseWriter, r *http.Request) {
 		erro(w, http.StatusBadRequest, "parametro_invalido", err.Error())
 		return
 	}
-	d, err := a.db.GetParlamentar(r.Context(), id, limite, offset)
+	var f store.FiltroVotos
+	if f.Voto, err = opcao(r, "voto", "sim", "nao", "abstencao", "obstrucao", "artigo_17", "outro"); err == nil {
+		f.Alinhamento, err = opcao(r, "alinhamento", "alinhado", "nao_alinhado")
+	}
+	if err != nil {
+		erro(w, http.StatusBadRequest, "parametro_invalido", err.Error())
+		return
+	}
+	d, err := a.db.GetParlamentar(r.Context(), id, f, limite, offset)
 	if err != nil {
 		a.falha(w, r, err)
 		return

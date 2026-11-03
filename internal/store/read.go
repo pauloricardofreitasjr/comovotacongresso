@@ -504,6 +504,12 @@ type VotoHistorico struct {
 	Proposicao        *PropRef
 }
 
+// FiltroVotos restringe o histórico de votos de um parlamentar. Campos vazios não filtram.
+type FiltroVotos struct {
+	Voto        string // sim, nao, abstencao, obstrucao, artigo_17, outro
+	Alinhamento string // "alinhado" ou "nao_alinhado" em relação à orientação do Governo (votos sem orientação ficam de fora)
+}
+
 type ParlamentarDetalhe struct {
 	ParlamentarResumo
 	Exercicio  []ExercicioLinha
@@ -511,7 +517,7 @@ type ParlamentarDetalhe struct {
 	TotalVotos int
 }
 
-func (s *Store) GetParlamentar(ctx context.Context, id, limiteVotos, offsetVotos int) (*ParlamentarDetalhe, error) {
+func (s *Store) GetParlamentar(ctx context.Context, id int, f FiltroVotos, limiteVotos, offsetVotos int) (*ParlamentarDetalhe, error) {
 	p, err := scanParlamentar(s.pool.QueryRow(ctx, parlamentarSelect+` WHERE m.parlamentar_id = $1`, id))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNaoEncontrado
@@ -538,15 +544,29 @@ func (s *Store) GetParlamentar(ctx context.Context, id, limiteVotos, offsetVotos
 		return nil, err
 	}
 
-	vrows, err := s.pool.Query(ctx, `
+	// $1 = parlamentar; condições do filtro vêm depois e valem também para a recontagem de uma página vazia.
+	condVotos := "x.parlamentar_id = $1"
+	argsVotos := []any{id}
+	if f.Voto != "" {
+		argsVotos = append(argsVotos, f.Voto)
+		condVotos += fmt.Sprintf(" AND x.voto = $%d::tipo_voto_enum", len(argsVotos))
+	}
+	switch f.Alinhamento {
+	case "alinhado":
+		condVotos += " AND x.alinhou_governo IS TRUE"
+	case "nao_alinhado":
+		condVotos += " AND x.alinhou_governo IS FALSE"
+	}
+	argsPagina := append(append([]any{}, argsVotos...), limiteVotos, offsetVotos)
+	vrows, err := s.pool.Query(ctx, fmt.Sprintf(`
 		SELECT v.id, v.data_hora, coalesce(v.descricao,''), v.aprovada, v.orientacao_governo::text,
 		       x.voto::text, x.alinhou_governo, x.partido_na_votacao,
 		       p.id, p.sigla_tipo, p.numero, p.ano, coalesce(p.ementa,''), count(*) OVER()
 		FROM votos x
 		JOIN votacoes v ON v.id = x.votacao_id
 		LEFT JOIN proposicoes p ON p.id = v.proposicao_id
-		WHERE x.parlamentar_id = $1
-		ORDER BY v.data_hora DESC, v.id DESC LIMIT $2 OFFSET $3`, id, limiteVotos, offsetVotos)
+		WHERE %s
+		ORDER BY v.data_hora DESC, v.id DESC LIMIT $%d OFFSET $%d`, condVotos, len(argsVotos)+1, len(argsVotos)+2), argsPagina...)
 	if err != nil {
 		return nil, err
 	}
@@ -569,7 +589,7 @@ func (s *Store) GetParlamentar(ctx context.Context, id, limiteVotos, offsetVotos
 		return nil, err
 	}
 	if len(d.Votos) == 0 && offsetVotos > 0 { // página além do fim: o total não veio nas linhas
-		if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM votos WHERE parlamentar_id = $1`, id).Scan(&d.TotalVotos); err != nil {
+		if err := s.pool.QueryRow(ctx, `SELECT count(*) FROM votos x WHERE `+condVotos, argsVotos...).Scan(&d.TotalVotos); err != nil {
 			return nil, err
 		}
 	}

@@ -426,6 +426,42 @@ func TestParlamentar_PerfilMetricasEHistorico(t *testing.T) {
 		t.Errorf("além do fim deve manter o total: %v", votos)
 	}
 
+	// filtros do histórico: V1 = Sim alinhado, V2 = Não não alinhado
+	ids := func(q string) string {
+		code, o, _ := get(t, srv, path+q)
+		if code != 200 {
+			t.Fatalf("%s: %d %v", q, code, o)
+		}
+		var is []string
+		for _, h := range lista(o["votos"].(obj), "dados") {
+			is = append(is, h["votacao_id"].(string))
+		}
+		return strings.Join(is, ";") + "|" + itoa(int(o["votos"].(obj)["total"].(float64)))
+	}
+	for q, want := range map[string]string{
+		"?alinhamento=nao_alinhado":              "V2|1",
+		"?alinhamento=alinhado":                  "V1|1",
+		"?voto=sim":                              "V1|1",
+		"?voto=nao":                              "V2|1",
+		"?voto=sim&alinhamento=nao_alinhado":     "|0", // combinados: nenhum
+		"?voto=abstencao":                        "|0",
+		"?alinhamento=nao_alinhado&page_votos=9": "|1", // além do fim: total do filtro, não do histórico todo
+	} {
+		if got := ids(q); got != want {
+			t.Errorf("%s: got %q, esperado %q", q, got, want)
+		}
+	}
+	// as métricas do perfil não mudam com os filtros
+	_, of, _ := get(t, srv, path+"?voto=nao")
+	if of["metricas"].(obj)["participacao_votacoes_nominais"].(obj)["votacoes_votou"].(float64) != 2 {
+		t.Errorf("filtro não deve alterar as métricas: %v", of["metricas"])
+	}
+	for _, q := range []string{"?voto=talvez", "?alinhamento=metade"} {
+		if code, _, _ := get(t, srv, path+q); code != 400 {
+			t.Errorf("%s deveria dar 400, deu %d", q, code)
+		}
+	}
+
 	if code, _, _ := get(t, srv, "/api/v1/parlamentares/99999"); code != 404 {
 		t.Errorf("inexistente: %d", code)
 	}

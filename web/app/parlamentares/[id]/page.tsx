@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { api } from "@/lib/api";
-import { formatData, formatDataHora, formatInt, inteiroPositivo, infoVoto, rotuloAlinhamento, rotuloOrientacao } from "@/lib/format";
+import { formatData, formatDataHora, formatInt, inteiroPositivo, infoVoto, plural, query, rotuloAlinhamento, rotuloOrientacao } from "@/lib/format";
+import { ALINHAMENTOS, lerFiltros, VOTOS_FILTRAVEIS, type FiltrosHistorico } from "@/lib/historico";
 import { Aviso, Foto, limpar, Metrica, Paginacao, VotoChip } from "@/components/ui";
 import { CREDITO_FOTO } from "@/lib/creditos";
 import { Compartilhar } from "@/components/Compartilhar";
@@ -25,7 +26,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function Parlamentar({ params, searchParams }: Props) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   const pagina = inteiroPositivo(sp.page_votos, 1);
-  const [p, status] = await Promise.all([api.parlamentar(id, { page_votos: pagina, limite_votos: LIMITE_VOTOS }), api.status()]);
+  const filtros = lerFiltros(sp);
+  const temFiltro = Boolean(filtros.voto || filtros.alinhamento);
+  const [p, status] = await Promise.all([
+    api.parlamentar(id, { page_votos: pagina, limite_votos: LIMITE_VOTOS, voto: filtros.voto || null, alinhamento: filtros.alinhamento || null }),
+    api.status(),
+  ]);
+  const caminho = `/parlamentares/${encodeURIComponent(id)}`;
+  const hrefFiltro = (novo: Partial<FiltrosHistorico>) => `${caminho}${query({ ...filtros, ...novo })}#historico`;
   const medias = status.medias_camara;
   const m = p.metricas;
   const votosNaoInformados = p.votos.dados.some((v) => v.voto === "outro");
@@ -82,11 +90,46 @@ export default async function Parlamentar({ params, searchParams }: Props) {
         O traço na barra marca a média do conjunto da Câmara (todas as sessões e votações somadas), para dar uma referência. Estar acima ou abaixo dela não é bom nem ruim por si só.
       </p>
 
-      <h2>Histórico de votos</h2>
+      <h2 id="historico">Histórico de votos</h2>
       <p className="muted">Votações nominais em que registrou voto, da mais recente para a mais antiga.</p>
+
+      <div className="filtros-historico">
+        <p className="rotulo-ordem" id="f-governo">Em relação ao Governo</p>
+        <ul className="tabs" aria-labelledby="f-governo">
+          <li><Link href={hrefFiltro({ alinhamento: "" })} aria-current={!filtros.alinhamento}>Todos</Link></li>
+          {ALINHAMENTOS.map((a) => (
+            <li key={a.valor}>
+              <Link href={hrefFiltro({ alinhamento: a.valor })} aria-current={filtros.alinhamento === a.valor}>{a.rotulo}</Link>
+            </li>
+          ))}
+        </ul>
+        <p className="rotulo-ordem" id="f-voto">Como votou</p>
+        <ul className="tabs" aria-labelledby="f-voto">
+          <li><Link href={hrefFiltro({ voto: "" })} aria-current={!filtros.voto}>Todos</Link></li>
+          {VOTOS_FILTRAVEIS.map((v) => (
+            <li key={v.valor}>
+              <Link href={hrefFiltro({ voto: v.valor })} aria-current={filtros.voto === v.valor}>{v.rotulo}</Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <p className="muted" aria-live="polite">
+        {temFiltro ? `${plural(p.votos.total, "voto encontrado", "votos encontrados")} com esses filtros. ` : `${plural(p.votos.total, "voto", "votos")}. `}
+        Os percentuais acima não mudam com os filtros.
+        {temFiltro ? <> <Link href={`${caminho}#historico`}>Limpar filtros</Link></> : null}
+      </p>
       {votosNaoInformados ? (
         <Aviso atencao>
           <p>Em algumas votações a Câmara não informou a posição do deputado; elas aparecem como “Voto não informado”.</p>
+        </Aviso>
+      ) : null}
+      {p.votos.dados.length === 0 ? (
+        <Aviso>
+          <p>
+            Nenhum voto com esses filtros.{" "}
+            {filtros.alinhamento && p.votos.total === 0 ? "Votos em votações sem orientação do Governo não entram na comparação. " : ""}
+            <Link href={`${caminho}#historico`}>Ver todos os votos</Link>
+          </p>
         </Aviso>
       ) : null}
       <ul className="historico">
@@ -110,8 +153,8 @@ export default async function Parlamentar({ params, searchParams }: Props) {
         ))}
       </ul>
       <Paginacao
-        pagina={p.votos.pagina} limite={p.votos.limite} total={p.votos.total} caminho={`/parlamentares/${encodeURIComponent(id)}`}
-        params={{}} nomePagina="page_votos"
+        pagina={p.votos.pagina} limite={p.votos.limite} total={p.votos.total} caminho={caminho}
+        params={{ voto: filtros.voto, alinhamento: filtros.alinhamento }} nomePagina="page_votos"
       />
 
       {p.exercicio.length > 0 ? (

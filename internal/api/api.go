@@ -36,7 +36,7 @@ type Leitor interface {
 	GetProposicao(ctx context.Context, id int) (*store.ProposicaoDetalhe, error)
 	GetVotacao(ctx context.Context, id string) (*store.VotacaoDetalhe, error)
 	ListarParlamentares(ctx context.Context, f store.ParlamentarFiltro) ([]store.ParlamentarResumo, int, error)
-	GetParlamentar(ctx context.Context, id, limiteVotos, offsetVotos int) (*store.ParlamentarDetalhe, error)
+	GetParlamentar(ctx context.Context, id int, f store.FiltroVotos, limiteVotos, offsetVotos int) (*store.ParlamentarDetalhe, error)
 	ListarPartidos(ctx context.Context, casa string) ([]store.PartidoLinha, error)
 	GetStatus(ctx context.Context) (store.Status, error)
 }
@@ -230,6 +230,20 @@ func texto(r *http.Request, nome string, maxLen int) (string, error) {
 		return "", paramErr("parâmetro '" + nome + "' excede " + strconv.Itoa(maxLen) + " caracteres")
 	}
 	return v, nil
+}
+
+// opcao lê um query param que só aceita um dos valores dados; ausente → "".
+func opcao(r *http.Request, nome string, validos ...string) (string, error) {
+	v := r.URL.Query().Get(nome)
+	if v == "" {
+		return "", nil
+	}
+	for _, ok := range validos {
+		if v == ok {
+			return v, nil
+		}
+	}
+	return "", paramErr("parâmetro '" + nome + "' deve ser um de: " + strings.Join(validos, ", "))
 }
 
 // booleano lê um query param "true"/"false"; ausente → false.

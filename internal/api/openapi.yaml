@@ -94,8 +94,10 @@ paths:
         - { name: id, in: path, required: true, schema: { type: integer } }
         - { name: page_votos, in: query, schema: { type: integer, minimum: 1, default: 1 } }
         - { name: limite_votos, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: voto, in: query, schema: { type: string, enum: [sim, nao, abstencao, obstrucao, artigo_17, outro] }, description: 'Só os votos deste tipo no histórico' }
+        - { name: alinhamento, in: query, schema: { type: string, enum: [alinhado, nao_alinhado] }, description: 'Só os votos iguais (alinhado) ou diferentes (nao_alinhado) da orientação do Governo; votos sem orientação ficam de fora' }
       responses:
-        '200': { description: OK }
+        '200': { description: 'OK. `votos.total` é o total depois dos filtros; as métricas do perfil não mudam com eles.' }
         '400': { $ref: '#/components/responses/Erro' }
         '404': { $ref: '#/components/responses/Erro' }
   /api/v1/partidos:

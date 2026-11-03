@@ -33,7 +33,7 @@ make down
 | `GET /api/v1/proposicoes/{id}` | proposição + linha do tempo das votações (`principal` em destaque) |
 | `GET /api/v1/votacoes/{id}` | votação, orientações e votos individuais (só nominais) |
 | `GET /api/v1/parlamentares` | ranking (`partido`, `uf`, `busca`, `em_exercicio`, `ordenarPor`, `ordem`, `min_votacoes`) |
-| `GET /api/v1/parlamentares/{id}` | perfil, métricas, exercício e histórico de votos (`page_votos`, `limite_votos`) |
+| `GET /api/v1/parlamentares/{id}` | perfil, métricas, exercício e histórico de votos (`page_votos`, `limite_votos`), `voto` e `alinhamento` filtram o histórico |
 | `GET /api/v1/partidos` | métricas por partido |
 
 Cada parlamentar traz três métricas **distintas**, sempre com as contagens: `participacao_votacoes_nominais`, `presenca_sessao` (oficial) e `alinhamento_governo`. `{id}` de proposição e parlamentar é o id interno; o de votação é o da Câmara (`2635476-36`). Erros: `{"erro":{"codigo","mensagem"}}`. Respostas levam `Cache-Control` (dados mudam 1x/dia) e CORS aberto; rate limiting fica no proxy/CDN.

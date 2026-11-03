@@ -136,6 +136,7 @@ A presença oficial da Câmara é por **sessão** (registro de presença), dispo
 - **Conferência:** para 2025, os números do banco coincidem com o cálculo independente anterior (ex.: Isnaldo Bulhões Jr. 58 presenças, Bivar 59, Elmar 98; 120 sessões encerradas contra 121 sem o filtro de situação).
 - **Presença média (período inteiro): 92,3%**, contra 79,1% de participação nas nominais. Exemplo extremo: Antonio Brito, 100% de presença em sessão e 35% de participação nas nominais.
 - As duas métricas são mantidas separadas, com nomes próprios (`pct_presenca_sessao` e `pct_participacao`).
+- **Siglas de partido na lista de presença divergem das do exercício** ("Republican", "Podemos", "Solidaried", "União" contra REPUBLICANOS, PODE, SOLIDARIEDADE, UNIÃO). Agrupar por partido pela grafia da presença dividia cada partido em dois grupos e mostrava 0% de presença para vários na página de partidos (achado em revisão de UX, nov/2026). A migration `00004` passou a agrupar pela sigla do exercício; a presença por parlamentar não mudou (média 92,3%).
 
 ## 4. Ainda em aberto (não resolvido por Swagger nem por amostra)
 

@@ -60,7 +60,7 @@ func TestMigracoes_UpDownUp(t *testing.T) {
 	if err := admin.QueryRowContext(ctx, `SELECT count(*) FROM pg_matviews WHERE schemaname=$1`, schema).Scan(&mvs); err != nil || mvs != 4 {
 		t.Fatalf("materialized views=%d err=%v, esperado 4", mvs, err)
 	}
-	for i := 0; i < 3; i++ { // uma migration por "down"
+	for i := 0; i < 4; i++ { // uma migration por "down"
 		if err := Run(dsn, "down"); err != nil {
 			t.Fatalf("down %d: %v", i+1, err)
 		}

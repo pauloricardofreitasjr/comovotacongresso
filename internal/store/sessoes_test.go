@@ -133,3 +133,60 @@ func TestSubstituirExercicioNoPeriodo_PreservaOutrasLegislaturas(t *testing.T) {
 		t.Errorf("partido_atual=%q err=%v, want PL (intervalo mais recente)", partido, err)
 	}
 }
+
+// Regressão: a lista de presença da Câmara usa outra grafia de partido ("Republican", "Podemos")
+// que a do exercício ("REPUBLICANOS", "PODE"). Agrupar pela grafia da presença dividia cada partido
+// em dois grupos e a página de partidos mostrava 0% de presença para vários. O agrupamento
+// deve usar sempre a sigla do exercício (ou, sem exercício, a do cadastro).
+func TestMetricas_PresencaPartidoUsaSiglaDoExercicio(t *testing.T) {
+	pool := testdb.Novo(t)
+	s := New(pool)
+	ctx := context.Background()
+
+	ids, err := s.UpsertParlamentares(ctx, []ParlamentarIn{
+		{IDExterno: 1, Nome: "A", Partido: "REPUBLICANOS"}, {IDExterno: 2, Nome: "B", Partido: "PODE"},
+	}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 1 tem exercício; 2 não tem (cai no partido do cadastro).
+	if err := s.SubstituirExercicio(ctx, ids[1], []domain.Intervalo{{Inicio: utc("2025-01-01 00:00"), Partido: "REPUBLICANOS"}}); err != nil {
+		t.Fatal(err)
+	}
+	for i, dia := range []string{"2025-03-01", "2025-03-02"} {
+		err := s.SalvarSessao(ctx, SessaoIn{IDExterno: i + 1, Inicio: utc(dia + " 14:00"), Tipo: "Sessão Deliberativa", Presentes: []ParlamentarIn{
+			{IDExterno: 1, Nome: "A", Partido: "Republican"}, {IDExterno: 2, Nome: "B", Partido: "Podemos"},
+		}})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.AtualizarMetricas(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	rows, err := pool.Query(ctx, `SELECT partido, sessoes_elegiveis, sessoes_presente, pct_presenca_sessao::float8 FROM mv_partido_presenca_sessao ORDER BY partido`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	got := map[string][3]float64{}
+	for rows.Next() {
+		var p string
+		var el, pr int
+		var pct float64
+		if err := rows.Scan(&p, &el, &pr, &pct); err != nil {
+			t.Fatal(err)
+		}
+		got[p] = [3]float64{float64(el), float64(pr), pct}
+	}
+	want := map[string][3]float64{"REPUBLICANOS": {2, 2, 100}, "PODE": {2, 2, 100}}
+	if len(got) != len(want) {
+		t.Fatalf("grupos=%v, esperado %v (sem grafias da presença)", got, want)
+	}
+	for p, w := range want {
+		if got[p] != w {
+			t.Errorf("%s: got %v, esperado %v", p, got[p], w)
+		}
+	}
+}

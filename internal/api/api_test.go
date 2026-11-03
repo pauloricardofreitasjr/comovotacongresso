@@ -192,9 +192,12 @@ func TestProposicoes_ListaFiltrosEPaginacao(t *testing.T) {
 	if code != 200 || o["total"].(float64) != 2 || len(lista(o, "dados")) != 1 || lista(o, "dados")[0]["identificacao"] != "PL 10/2025" {
 		t.Errorf("paginação: %v", o)
 	}
-	// página além do fim: lista vazia (não nula)
-	if _, o, _ := get(t, srv, "/api/v1/proposicoes?pagina=9"); len(lista(o, "dados")) != 0 {
+	// página além do fim: lista vazia (não nula) e o total continua correto
+	if _, o, _ := get(t, srv, "/api/v1/proposicoes?pagina=9"); len(lista(o, "dados")) != 0 || o["total"].(float64) != 2 {
 		t.Errorf("além do fim: %v", o)
+	}
+	if _, o, _ := get(t, srv, "/api/v1/proposicoes?tipo=PL&pagina=9"); o["total"].(float64) != 1 {
+		t.Errorf("além do fim com filtro: total=%v, esperado 1", o["total"])
 	}
 	// contagens do item
 	_, o, _ = get(t, srv, "/api/v1/proposicoes?tipo=PL")
@@ -327,6 +330,13 @@ func TestParlamentares_FiltrosEOrdenacao(t *testing.T) {
 	}
 	if got := lst("em_exercicio=todos&uf=ba"); got != "Ana Costa" {
 		t.Errorf("uf: %q", got)
+	}
+	// além da última página: vazio, mas o total (com os mesmos filtros) é preservado
+	if _, o, _ := get(t, srv, "/api/v1/parlamentares?em_exercicio=todos&pagina=9"); len(lista(o, "dados")) != 0 || o["total"].(float64) != 4 {
+		t.Errorf("além do fim: %v", o)
+	}
+	if _, o, _ := get(t, srv, "/api/v1/parlamentares?partido=pt&em_exercicio=todos&pagina=9"); o["total"].(float64) != 2 {
+		t.Errorf("além do fim com filtro: total=%v, esperado 2", o["total"])
 	}
 	for _, q := range []string{"ordenarPor=xyz", "ordem=cima", "em_exercicio=talvez", "casa=marte", "limite=0", "limite=101", "pagina=0", "min_votacoes=-1"} {
 		if code, o, _ := get(t, srv, "/api/v1/parlamentares?"+q); code != 400 || o["erro"] == nil {

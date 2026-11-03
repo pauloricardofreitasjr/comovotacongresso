@@ -47,6 +47,14 @@ describe("cliente da API", () => {
     await expect(api.proposicao("9")).rejects.toThrow("NEXT_NOT_FOUND");
   });
 
+  it("id malformado (400) em consulta por id também é notFound, mas em listagem continua erro", async () => {
+    fetchMock.mockResolvedValue(json(400, { erro: { codigo: "parametro_invalido", mensagem: "id" } }));
+    await expect(api.parlamentar("abc")).rejects.toThrow("NEXT_NOT_FOUND");
+    await expect(api.proposicao("abc")).rejects.toThrow("NEXT_NOT_FOUND");
+    await expect(api.votacao("abc")).rejects.toThrow("NEXT_NOT_FOUND");
+    await expect(api.parlamentares({ limite: 0 })).rejects.toBeInstanceOf(ApiError);
+  });
+
   it("outros erros carregam código e mensagem da API", async () => {
     fetchMock.mockResolvedValue(json(400, { erro: { codigo: "parametro_invalido", mensagem: "limite inválido" } }));
     const err = await api.parlamentares({ limite: 0 }).catch((e) => e);

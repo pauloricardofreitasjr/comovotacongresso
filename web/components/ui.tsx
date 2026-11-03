@@ -112,8 +112,9 @@ export function Paginacao({
   return (
     <nav className="paginacao" aria-label="Paginação">
       <span className="muted">
-        {de > total ? `Nenhum resultado nesta página` : `${formatInt(de)}–${formatInt(ate)} de ${formatInt(total)}`}
+        {de > total ? "Não há resultados nesta página." : `${formatInt(de)}–${formatInt(ate)} de ${formatInt(total)}`}
       </span>
+      {de > total ? <Link className="button secondary" href={href(1)}>Voltar à primeira página</Link> : null}
       <span className="links">
         {pagina > 1 ? <Link className="button secondary" href={href(pagina - 1)} rel="prev">← Anterior</Link> : null}
         {pagina < paginas ? <Link className="button secondary" href={href(pagina + 1)} rel="next">Próxima →</Link> : null}

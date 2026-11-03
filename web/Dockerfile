@@ -17,6 +17,8 @@ WORKDIR /app
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY docs/metodologia.md /app/metodologia.md
+# O Next grava o cache de dados (fetch com revalidate) em .next/cache; o usuário node precisa poder criá-lo.
+RUN mkdir -p .next/cache && chown -R node:node /app
 USER node
 EXPOSE 3000
 CMD ["node", "server.js"]

@@ -105,7 +105,18 @@ func (s *Store) ListarProposicoes(ctx context.Context, f ProposicaoFiltro) ([]Pr
 		}
 		out = append(out, p)
 	}
-	return out, total, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	if len(out) == 0 && f.Offset > 0 { // count(*) OVER() some sem linhas: reconta para manter o total correto
+		err := s.pool.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) FROM (
+			SELECT p.id FROM proposicoes p JOIN votacoes v ON v.proposicao_id = p.id %s GROUP BY p.id) t`, cond),
+			args[:len(args)-2]...).Scan(&total)
+		if err != nil {
+			return nil, 0, err
+		}
+	}
+	return out, total, nil
 }
 
 // ResumoVotos conta os votos de uma votação nominal por tipo.
@@ -409,7 +420,16 @@ func (s *Store) ListarParlamentares(ctx context.Context, f ParlamentarFiltro) ([
 		}
 		out = append(out, p)
 	}
-	return out, total, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	if len(out) == 0 && f.Offset > 0 { // idem: total correto mesmo além da última página
+		if err := s.pool.QueryRow(ctx, "SELECT count(*) FROM mv_parlamentar_metricas m LEFT JOIN mv_parlamentar_presenca_sessao ps ON ps.parlamentar_id = m.parlamentar_id "+cond,
+			args[:len(args)-2]...).Scan(&total); err != nil {
+			return nil, 0, err
+		}
+	}
+	return out, total, nil
 }
 
 type ExercicioLinha struct {

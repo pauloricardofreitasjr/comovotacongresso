@@ -27,9 +27,10 @@ type Params = Record<string, string | number | null | undefined>;
 
 /**
  * GET JSON na API. 404 vira a página "não encontrado" do Next; qualquer outro erro
- * lança ApiError e cai no error boundary.
+ * lança ApiError e cai no error boundary. Em consulta por id (`recurso`), um 400 também é
+ * "não encontrado": um id malformado na URL não é falha do servidor.
  */
-async function get<T>(path: string, params: Params = {}, opts: { aceita404?: boolean } = {}): Promise<T> {
+async function get<T>(path: string, params: Params = {}, opts: { recurso?: boolean } = {}): Promise<T> {
   let resp: Response;
   try {
     resp = await fetch(`${apiBase()}${path}${query(params)}`, {
@@ -39,7 +40,7 @@ async function get<T>(path: string, params: Params = {}, opts: { aceita404?: boo
   } catch {
     throw new ApiError(503, "api_indisponivel", "Não foi possível falar com a API.");
   }
-  if (resp.status === 404 && !opts.aceita404) notFound();
+  if (resp.status === 404 || (opts.recurso && resp.status === 400)) notFound();
   if (!resp.ok) {
     let codigo = "erro", mensagem = `Erro ${resp.status} na API.`;
     try {
@@ -57,9 +58,9 @@ async function get<T>(path: string, params: Params = {}, opts: { aceita404?: boo
 export const api = {
   status: () => get<Status>("/api/v1/status"),
   proposicoes: (p: Params) => get<Pagina<ProposicaoResumo>>("/api/v1/proposicoes", p),
-  proposicao: (id: string) => get<ProposicaoDetalhe>(`/api/v1/proposicoes/${encodeURIComponent(id)}`),
-  votacao: (id: string) => get<VotacaoDetalhe>(`/api/v1/votacoes/${encodeURIComponent(id)}`),
+  proposicao: (id: string) => get<ProposicaoDetalhe>(`/api/v1/proposicoes/${encodeURIComponent(id)}`, {}, { recurso: true }),
+  votacao: (id: string) => get<VotacaoDetalhe>(`/api/v1/votacoes/${encodeURIComponent(id)}`, {}, { recurso: true }),
   parlamentares: (p: Params) => get<Pagina<ParlamentarResumo>>("/api/v1/parlamentares", p),
-  parlamentar: (id: string, p: Params = {}) => get<ParlamentarDetalhe>(`/api/v1/parlamentares/${encodeURIComponent(id)}`, p),
+  parlamentar: (id: string, p: Params = {}) => get<ParlamentarDetalhe>(`/api/v1/parlamentares/${encodeURIComponent(id)}`, p, { recurso: true }),
   partidos: () => get<{ dados: Partido[] }>("/api/v1/partidos", { casa: "camara" }).then((r) => r.dados),
 };

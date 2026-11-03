@@ -87,7 +87,7 @@ small, .muted { color: var(--text-muted); }
 .brand { font-weight: 800; font-size: 1.15rem; color: var(--text); text-decoration: none; letter-spacing: -.01em; }
 .brand span { color: var(--accent); }
 .nav { display: flex; flex-wrap: wrap; gap: .25rem 1rem; }
-.nav a { color: var(--text); text-decoration: none; padding: .25rem 0; border-bottom: 2px solid transparent; }
+.nav a { color: var(--text); text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; padding: 0 .1rem; border-bottom: 2px solid transparent; }
 .nav a:hover, .nav a[aria-current="page"] { border-bottom-color: var(--accent); }
 main { padding: 1.5rem 0 3rem; min-height: 60vh; }
 .site-footer { border-top: 1px solid var(--border); background: var(--surface); padding: 1.5rem 0; font-size: .9rem; color: var(--text-muted); }
@@ -126,7 +126,7 @@ button, .button {
 
 /* abas (links) */
 .tabs { display: flex; flex-wrap: wrap; gap: .4rem; margin: 1rem 0; padding: 0; list-style: none; }
-.tabs a { display: inline-block; padding: .45rem .9rem; border: 1px solid var(--border); border-radius: 999px; text-decoration: none; color: var(--text); background: var(--surface); }
+.tabs a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 .9rem; border: 1px solid var(--border); border-radius: 999px; text-decoration: none; color: var(--text); background: var(--surface); }
 .tabs a[aria-current="true"] { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
 
 /* badges */

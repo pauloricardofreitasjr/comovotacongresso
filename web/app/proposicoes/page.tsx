@@ -3,10 +3,11 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { formatData, inteiroPositivo, plural, primeiro } from "@/lib/format";
 import { limpar, Paginacao } from "@/components/ui";
+import { interpretarIdentificacao, TIPOS_CONHECIDOS } from "@/lib/busca";
 
 export const metadata: Metadata = { title: "Leis e projetos votados" };
 
-const TIPOS = ["PL", "PEC", "PLP", "PLV", "MPV", "PDL", "PRC"];
+const TIPOS = TIPOS_CONHECIDOS.slice(0, 7);
 const LIMITE = 20;
 
 export default async function Proposicoes({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -17,7 +18,13 @@ export default async function Proposicoes({ searchParams }: { searchParams: Prom
   const pagina = inteiroPositivo(sp.pagina, 1);
   const anoValido = /^\d{4}$/.test(ano) ? ano : "";
 
-  const res = await api.proposicoes({ busca, tipo, ano: anoValido, pagina, limite: LIMITE });
+  // "PL 186/2026" busca pela identificação; qualquer outro texto busca na ementa.
+  const id = interpretarIdentificacao(busca);
+  const res = await api.proposicoes(
+    id
+      ? { tipo: id.tipo, numero: id.numero, ano: id.ano, pagina, limite: LIMITE }
+      : { busca, tipo, ano: anoValido, pagina, limite: LIMITE },
+  );
   const filtros = { busca, tipo, ano: anoValido };
   const temFiltro = Boolean(busca || tipo || anoValido);
 
@@ -29,7 +36,7 @@ export default async function Proposicoes({ searchParams }: { searchParams: Prom
       <form className="filters" action="/proposicoes" role="search">
         <label>
           Assunto ou palavra
-          <input type="search" name="busca" defaultValue={busca} placeholder="Ex.: imposto, saúde" />
+          <input type="search" name="busca" defaultValue={busca} placeholder="Ex.: imposto, ou PL 186/2026" />
         </label>
         <label>
           Tipo

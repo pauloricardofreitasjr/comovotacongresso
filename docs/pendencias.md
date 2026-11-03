@@ -15,7 +15,8 @@ Estado em 2026-11-03, após as Fases 0 a 4 e a revisão do site. Itens ordenados
 
 ## Sensível ao tempo
 
-- **A 58ª legislatura começa em 1º/fev/2027.** O ETL tem a 57ª fixa (`-legislatura 57`) e a série "desde 2023" assume uma só legislatura. Sem ajuste, os deputados eleitos em 2026 não entram. Precisa estar pronto antes de fevereiro.
+- **58ª legislatura (1º/fev/2027): código pronto, falta validar na virada.** O ETL descobre a vigente por `/legislaturas` e o exercício é substituído só dentro do período de cada legislatura. Não verificado, porque a API ainda não publica a 58: se `/legislaturas` e `/deputados?idLegislatura=58` aparecem completos no dia, e se a fonte emite `FIM_MANDATO` dos não reeleitos da 57 (na transição 56→57 emitiu em 31/01/2023). Rodar `sync-parlamentares` nos primeiros dias de fevereiro e conferir `em_exercicio`.
+- O texto "desde fevereiro de 2023" no site continua correto para a série que cobre as duas legislaturas; rever se o responsável decidir mostrar só a vigente.
 
 ## Dados a validar ou decidir
 

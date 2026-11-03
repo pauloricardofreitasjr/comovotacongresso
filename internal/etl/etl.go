@@ -26,6 +26,7 @@ type Fonte interface {
 	Votacao(ctx context.Context, id string) (camara.VotacaoDetalhe, error)
 	Votos(ctx context.Context, id string) ([]camara.Voto, error)
 	Orientacoes(ctx context.Context, id string) ([]camara.Orientacao, error)
+	Legislaturas(ctx context.Context) ([]camara.Legislatura, error)
 	Deputados(ctx context.Context, legislatura int) ([]camara.Deputado, error)
 	Historico(ctx context.Context, idDeputado int) ([]camara.HistoricoEvento, error)
 	Eventos(ctx context.Context, ini, fim time.Time, idOrgao int) ([]camara.Evento, error)
@@ -51,8 +52,51 @@ func (e *ETL) log() *slog.Logger {
 	return slog.Default()
 }
 
+// Legislaturas lista as legislaturas conhecidas pela fonte.
+func (e *ETL) Legislaturas(ctx context.Context) ([]domain.Legislatura, error) {
+	ls, err := e.Fonte.Legislaturas(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("listar legislaturas: %w", err)
+	}
+	out := make([]domain.Legislatura, 0, len(ls))
+	for _, l := range ls {
+		ini, err1 := time.Parse("2006-01-02", l.DataInicio)
+		fim, err2 := time.Parse("2006-01-02", l.DataFim)
+		if err1 != nil || err2 != nil {
+			return nil, fmt.Errorf("legislatura %d com datas inválidas (%q a %q)", l.ID, l.DataInicio, l.DataFim)
+		}
+		out = append(out, domain.Legislatura{ID: l.ID, Inicio: ini, Fim: fim})
+	}
+	return out, nil
+}
+
+// SyncVigentes sincroniza a legislatura vigente em hoje (e a anterior, logo após a virada).
+// Se a fonte ainda não publicou a nova legislatura, usa a mais recente e avisa no log.
+func (e *ETL) SyncVigentes(ctx context.Context, hoje time.Time) error {
+	legs, err := e.Legislaturas(ctx)
+	if err != nil {
+		return err
+	}
+	if v, ok := domain.Vigente(legs, hoje); !ok {
+		e.log().Warn("nenhuma legislatura cobre a data; usando a mais recente", "hoje", hoje.Format("2006-01-02"), "legislatura", v.ID)
+	}
+	return e.SyncLegislaturas(ctx, domain.ParaSincronizar(legs, hoje))
+}
+
+// SyncLegislaturas sincroniza as legislaturas dadas, na ordem recebida.
+func (e *ETL) SyncLegislaturas(ctx context.Context, ls []domain.Legislatura) error {
+	for _, l := range ls {
+		if _, err := e.SyncParlamentares(ctx, l); err != nil {
+			return fmt.Errorf("legislatura %d: %w", l.ID, err)
+		}
+	}
+	return nil
+}
+
 // SyncParlamentares carrega os deputados da legislatura e seus intervalos de exercício.
-func (e *ETL) SyncParlamentares(ctx context.Context, legislatura int) (res Resumo, err error) {
+// Só os intervalos dentro do período da legislatura são substituídos.
+func (e *ETL) SyncParlamentares(ctx context.Context, leg domain.Legislatura) (res Resumo, err error) {
+	legislatura := leg.ID
 	runID, err := e.Store.IniciarRun(ctx, "sync-parlamentares", map[string]int{"legislatura": legislatura})
 	if err != nil {
 		return res, err
@@ -78,7 +122,7 @@ func (e *ETL) SyncParlamentares(ctx context.Context, legislatura int) (res Resum
 		if err := ctx.Err(); err != nil {
 			return res, err
 		}
-		if err := e.syncExercicio(ctx, ids[d.ID], d.ID, legislatura); err != nil {
+		if err := e.syncExercicio(ctx, ids[d.ID], d.ID, leg); err != nil {
 			res.Erros++
 			e.registrarErro(ctx, runID, fmt.Sprintf("deputado/%d", d.ID), err)
 			continue
@@ -89,7 +133,8 @@ func (e *ETL) SyncParlamentares(ctx context.Context, legislatura int) (res Resum
 	return res, nil
 }
 
-func (e *ETL) syncExercicio(ctx context.Context, parlamentarID, idExterno, legislatura int) error {
+func (e *ETL) syncExercicio(ctx context.Context, parlamentarID, idExterno int, leg domain.Legislatura) error {
+	legislatura := leg.ID
 	hist, err := e.Fonte.Historico(ctx, idExterno)
 	if err != nil {
 		return err
@@ -108,7 +153,7 @@ func (e *ETL) syncExercicio(ctx context.Context, parlamentarID, idExterno, legis
 			Situacao: h.Situacao, Condicao: h.CondicaoEleitoral,
 		})
 	}
-	return e.Store.SubstituirExercicio(ctx, parlamentarID, domain.Intervalos(evs, legislatura))
+	return e.Store.SubstituirExercicioNoPeriodo(ctx, parlamentarID, domain.Intervalos(evs, legislatura), leg.Inicio, leg.Fim.AddDate(0, 0, 1))
 }
 
 // IngerirVotacoes baixa e grava as votações do Plenário entre ini e fim (inclusive).

@@ -143,15 +143,25 @@ func dedupe(ps []ParlamentarIn) []ParlamentarIn {
 	return out
 }
 
-// SubstituirExercicio troca todos os intervalos de exercício do parlamentar (ivs em ordem
-// cronológica) e atualiza partido_atual com o partido do último intervalo.
+// SubstituirExercicio troca TODOS os intervalos de exercício do parlamentar. O ETL não deve
+// usá-lo: o mesmo deputado reeleito tem exercício em mais de uma legislatura, e a
+// sincronização de uma não pode apagar a outra (ver SubstituirExercicioNoPeriodo).
 func (s *Store) SubstituirExercicio(ctx context.Context, parlamentarID int, ivs []domain.Intervalo) error {
+	return s.SubstituirExercicioNoPeriodo(ctx, parlamentarID, ivs, time.Time{}, time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC))
+}
+
+// SubstituirExercicioNoPeriodo troca os intervalos de exercício que começam em [de, ate)
+// (normalmente o período de uma legislatura), preservando os das demais. ivs vem em ordem
+// cronológica. partido_atual passa a ser o partido do intervalo mais recente do parlamentar,
+// em qualquer legislatura, de modo que a ordem de sincronização não importa.
+func (s *Store) SubstituirExercicioNoPeriodo(ctx context.Context, parlamentarID int, ivs []domain.Intervalo, de, ate time.Time) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
-	if _, err := tx.Exec(ctx, `DELETE FROM parlamentares_exercicio WHERE parlamentar_id = $1`, parlamentarID); err != nil {
+	if _, err := tx.Exec(ctx, `DELETE FROM parlamentares_exercicio WHERE parlamentar_id = $1 AND inicio >= $2 AND inicio < $3`,
+		parlamentarID, de, ate); err != nil {
 		return err
 	}
 	for _, iv := range ivs {
@@ -163,12 +173,13 @@ func (s *Store) SubstituirExercicio(ctx context.Context, parlamentarID int, ivs 
 			return fmt.Errorf("inserir exercício: %w", err)
 		}
 	}
-	// o último intervalo (ordem cronológica) dá o partido atual do parlamentar.
-	if n := len(ivs); n > 0 && ivs[n-1].Partido != "" {
-		if _, err := tx.Exec(ctx, `UPDATE parlamentares SET partido_atual = $2, updated_at = NOW() WHERE id = $1`,
-			parlamentarID, trunc(ivs[n-1].Partido, 30)); err != nil {
-			return err
-		}
+	if _, err := tx.Exec(ctx, `
+		UPDATE parlamentares SET updated_at = NOW(), partido_atual = COALESCE(
+			(SELECT e.partido FROM parlamentares_exercicio e
+			  WHERE e.parlamentar_id = parlamentares.id AND e.partido IS NOT NULL
+			  ORDER BY e.inicio DESC LIMIT 1), partido_atual)
+		WHERE id = $1`, parlamentarID); err != nil {
+		return err
 	}
 	return tx.Commit(ctx)
 }

@@ -62,6 +62,15 @@ func (c *Client) Orientacoes(ctx context.Context, id string) ([]Orientacao, erro
 	return env.Dados, err
 }
 
+// Legislaturas lista as legislaturas (da mais recente para a mais antiga).
+func (c *Client) Legislaturas(ctx context.Context) ([]Legislatura, error) {
+	q := url.Values{}
+	q.Set("itens", fmt.Sprint(itensPorPagina))
+	q.Set("ordem", "DESC")
+	q.Set("ordenarPor", "id")
+	return paginado[Legislatura](ctx, c, c.base+"/legislaturas?"+q.Encode())
+}
+
 // Deputados lista todos os deputados que atuaram na legislatura.
 func (c *Client) Deputados(ctx context.Context, legislatura int) ([]Deputado, error) {
 	q := url.Values{}

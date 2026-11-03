@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"testing"
+	"time"
 
 	"comovotacongresso/internal/domain"
 	"comovotacongresso/internal/testdb"
@@ -96,5 +97,39 @@ func TestMetricas_PresencaSessao(t *testing.T) {
 	pool.QueryRow(ctx, `SELECT count(*) FROM sessoes_presencas sp JOIN sessoes s ON s.id=sp.sessao_id WHERE s.id_externo=1`).Scan(&total)
 	if total != 1 {
 		t.Errorf("presenças da sessão 1 após regravar = %d, esperado 1", total)
+	}
+}
+
+// Regressão: o exercício de uma legislatura não pode apagar o de outra, e partido_atual vem do
+// intervalo mais recente mesmo quando a legislatura antiga é sincronizada por último.
+func TestSubstituirExercicioNoPeriodo_PreservaOutrasLegislaturas(t *testing.T) {
+	pool := testdb.Novo(t)
+	s := New(pool)
+	ctx := context.Background()
+	ids, err := s.UpsertParlamentares(ctx, []ParlamentarIn{{IDExterno: 1, Nome: "A", Partido: "PT"}}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := ids[1]
+	l57de, l57ate := utc("2023-02-01 00:00"), utc("2027-02-01 00:00")
+	l58de, l58ate := utc("2027-02-01 00:00"), utc("2031-02-01 00:00")
+
+	iv57 := []domain.Intervalo{{Inicio: utc("2023-02-01 12:00"), Fim: ptr(utc("2027-01-31 12:00")), Partido: "PT"}}
+	iv58 := []domain.Intervalo{{Inicio: utc("2027-02-01 12:00"), Partido: "PL"}}
+	for _, c := range []struct {
+		ivs     []domain.Intervalo
+		de, ate time.Time
+	}{{iv58, l58de, l58ate}, {iv57, l57de, l57ate}} { // 58 primeiro, 57 por último
+		if err := s.SubstituirExercicioNoPeriodo(ctx, id, c.ivs, c.de, c.ate); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var n int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM parlamentares_exercicio WHERE parlamentar_id=$1`, id).Scan(&n); err != nil || n != 2 {
+		t.Fatalf("intervalos=%d err=%v, want 2", n, err)
+	}
+	var partido string
+	if err := pool.QueryRow(ctx, `SELECT partido_atual FROM parlamentares WHERE id=$1`, id).Scan(&partido); err != nil || partido != "PL" {
+		t.Errorf("partido_atual=%q err=%v, want PL (intervalo mais recente)", partido, err)
 	}
 }

@@ -16,6 +16,7 @@ import (
 
 	"comovotacongresso/internal/camara"
 	"comovotacongresso/internal/config"
+	"comovotacongresso/internal/domain"
 	"comovotacongresso/internal/etl"
 	"comovotacongresso/internal/httpclient"
 	"comovotacongresso/internal/migrate"
@@ -28,14 +29,14 @@ const (
 comandos:
   migrate | migrate-down | migrate-status
   metricas                   recalcula presença e alinhamento (também roda ao fim dos demais)
-  sync-parlamentares [-legislatura 57]
+  sync-parlamentares [-legislatura N]   padrão: a vigente (e a anterior nos 90 dias após a virada)
   votacoes -from AAAA-MM-DD -to AAAA-MM-DD [-force]
   sessoes  -from AAAA-MM-DD -to AAAA-MM-DD [-force]   presença oficial em sessões deliberativas
   daily                      votações de ontem e hoje (horário de Brasília)
-  backfill [-from 2023-02-01] [-to hoje] [-legislatura 57]
+  backfill [-from 2023-02-01] [-to hoje] [-legislatura N]   padrão: todas as que cobrem o período
 `
-	inicioLegislatura57 = "2023-02-01"
-	janelaBackfillDias  = 30
+	inicioSerie        = "2023-02-01"
+	janelaBackfillDias = 30
 )
 
 func main() {
@@ -73,7 +74,7 @@ func run(ctx context.Context, cmd string, args []string) error {
 
 func ingestao(ctx context.Context, cfg config.Config, cmd string, args []string) error {
 	fs := flag.NewFlagSet(cmd, flag.ContinueOnError)
-	legislatura := fs.Int("legislatura", 57, "legislatura (sync-parlamentares/backfill)")
+	legislatura := fs.Int("legislatura", 0, "legislatura (sync-parlamentares/backfill); 0 = automático")
 	from := fs.String("from", "", "data inicial AAAA-MM-DD")
 	to := fs.String("to", "", "data final AAAA-MM-DD")
 	force := fs.Bool("force", false, "rebuscar votações já gravadas")
@@ -99,7 +100,7 @@ func ingestao(ctx context.Context, cfg config.Config, cmd string, args []string)
 		return e.AtualizarMetricas(ctx)
 
 	case "sync-parlamentares":
-		if _, err = e.SyncParlamentares(ctx, *legislatura); err != nil {
+		if err = syncParlamentares(ctx, e, *legislatura, hoje); err != nil {
 			return err
 		}
 		return e.AtualizarMetricas(ctx)
@@ -136,13 +137,18 @@ func ingestao(ctx context.Context, cfg config.Config, cmd string, args []string)
 
 	case "backfill":
 		if *from == "" {
-			*from = inicioLegislatura57
+			*from = inicioSerie
 		}
 		ini, fim, err := intervalo(*from, *to, hoje)
 		if err != nil {
 			return err
 		}
-		if _, err := e.SyncParlamentares(ctx, *legislatura); err != nil {
+		if *legislatura != 0 {
+			err = syncParlamentares(ctx, e, *legislatura, hoje)
+		} else {
+			err = syncPeriodo(ctx, e, ini, fim)
+		}
+		if err != nil {
 			return err
 		}
 		var total etl.Resumo
@@ -212,4 +218,34 @@ func janelas(ini, fim time.Time, n int) [][2]time.Time {
 		out = append(out, [2]time.Time{cur, end})
 	}
 	return out
+}
+
+// syncParlamentares sincroniza a legislatura pedida ou, com 0, a vigente em hoje.
+func syncParlamentares(ctx context.Context, e *etl.ETL, legislatura int, hoje time.Time) error {
+	if legislatura == 0 {
+		return e.SyncVigentes(ctx, hoje)
+	}
+	legs, err := e.Legislaturas(ctx)
+	if err != nil {
+		return err
+	}
+	for _, l := range legs {
+		if l.ID == legislatura {
+			return e.SyncLegislaturas(ctx, []domain.Legislatura{l})
+		}
+	}
+	return fmt.Errorf("legislatura %d desconhecida pela fonte", legislatura)
+}
+
+// syncPeriodo sincroniza todas as legislaturas que se sobrepõem a [ini, fim].
+func syncPeriodo(ctx context.Context, e *etl.ETL, ini, fim time.Time) error {
+	legs, err := e.Legislaturas(ctx)
+	if err != nil {
+		return err
+	}
+	ls := domain.NoPeriodo(legs, ini, fim)
+	if len(ls) == 0 {
+		return fmt.Errorf("nenhuma legislatura cobre %s a %s", ini.Format("2006-01-02"), fim.Format("2006-01-02"))
+	}
+	return e.SyncLegislaturas(ctx, ls)
 }

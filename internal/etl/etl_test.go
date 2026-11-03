@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"comovotacongresso/internal/camara"
+	"comovotacongresso/internal/domain"
 	"comovotacongresso/internal/httpclient"
 	"comovotacongresso/internal/store"
 	"comovotacongresso/internal/testdb"
@@ -66,6 +67,10 @@ func servidor(t *testing.T) *httptest.Server {
 				{"id":83060,"dataHoraInicio":"2026-10-14T10:00","dataHoraFim":"2026-10-14T11:00","situacao":"Encerrada","descricaoTipo":"Sessão Não Deliberativa Solene","descricao":"Solene"},
 				{"id":83070,"dataHoraInicio":"2026-10-16T14:00","dataHoraFim":"","situacao":"Em Andamento","descricaoTipo":"Sessão Deliberativa","descricao":"em andamento"},
 				{"id":99001,"dataHoraInicio":"2026-10-15T14:00","dataHoraFim":"2026-10-15T16:00","situacao":"Encerrada","descricaoTipo":"Sessão Deliberativa","descricao":"sem lista"}],"links":[]}`)
+		case "/legislaturas":
+			fmt.Fprint(w, `{"dados":[
+				{"id":57,"dataInicio":"2023-02-01","dataFim":"2027-01-31"},
+				{"id":56,"dataInicio":"2019-02-01","dataFim":"2023-01-31"}],"links":[]}`)
 		case "/deputados":
 			fmt.Fprint(w, `{"dados":[
 				{"id":178843,"nome":"Marx Beltrão","siglaPartido":"TESTE","siglaUf":"AL","idLegislatura":57,"urlFoto":"http://f/1.jpg"},
@@ -239,6 +244,55 @@ func TestIngerirVotacoes_ErroEmUmaNaoDerrubaALista(t *testing.T) {
 	}
 }
 
+var (
+	leg57 = domain.Legislatura{ID: 57, Inicio: time.Date(2023, 2, 1, 0, 0, 0, 0, time.UTC), Fim: time.Date(2027, 1, 31, 0, 0, 0, 0, time.UTC)}
+	leg58 = domain.Legislatura{ID: 58, Inicio: time.Date(2027, 2, 1, 0, 0, 0, 0, time.UTC), Fim: time.Date(2031, 1, 31, 0, 0, 0, 0, time.UTC)}
+)
+
+// Regressão: sincronizar a 58ª não pode apagar o exercício da 57ª de quem foi reeleito
+// (o ETL antigo trocava TODOS os intervalos do parlamentar).
+func TestSyncParlamentares_NovaLegislaturaPreservaAnterior(t *testing.T) {
+	pool := testdb.Novo(t)
+	srv := servidor(t)
+	defer srv.Close()
+	e := novoETL(t, pool, srv)
+	ctx := context.Background()
+
+	if _, err := e.SyncParlamentares(ctx, leg57); err != nil {
+		t.Fatal(err)
+	}
+	antes := contar(t, pool, `SELECT count(*) FROM parlamentares_exercicio`)
+	// a fonte de teste não tem eventos da 58 no histórico: a sincronização dela não deve tocar a 57.
+	if _, err := e.SyncParlamentares(ctx, leg58); err != nil {
+		t.Fatal(err)
+	}
+	if n := contar(t, pool, `SELECT count(*) FROM parlamentares_exercicio`); n != antes {
+		t.Errorf("exercício da 57ª mudou ao sincronizar a 58ª: %d -> %d", antes, n)
+	}
+	if n := contar(t, pool, `SELECT count(*) FROM parlamentares WHERE id_externo=178843 AND partido_atual='UNIÃO'`); n != 1 {
+		t.Error("partido_atual deve continuar vindo do intervalo mais recente")
+	}
+}
+
+func TestSyncVigentes_UsaLegislaturaDaData(t *testing.T) {
+	pool := testdb.Novo(t)
+	srv := servidor(t)
+	defer srv.Close()
+	e := novoETL(t, pool, srv)
+
+	hoje := time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC)
+	if err := e.SyncVigentes(context.Background(), hoje); err != nil {
+		t.Fatal(err)
+	}
+	if n := contar(t, pool, `SELECT count(*) FROM parlamentares_exercicio`); n != 4 {
+		t.Errorf("exercicios=%d", n)
+	}
+	// 1º/fev/2027 sem a 58 publicada na fonte: cai na 57 (aviso no log), sem erro.
+	if err := e.SyncVigentes(context.Background(), time.Date(2027, 2, 1, 0, 0, 0, 0, time.UTC)); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestSyncParlamentares_EExercicio(t *testing.T) {
 	pool := testdb.Novo(t)
 	srv := servidor(t)
@@ -246,7 +300,7 @@ func TestSyncParlamentares_EExercicio(t *testing.T) {
 	e := novoETL(t, pool, srv)
 	ctx := context.Background()
 
-	res, err := e.SyncParlamentares(ctx, 57)
+	res, err := e.SyncParlamentares(ctx, leg57)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -267,7 +321,7 @@ func TestSyncParlamentares_EExercicio(t *testing.T) {
 	}
 
 	// reexecução não duplica
-	if _, err := e.SyncParlamentares(ctx, 57); err != nil {
+	if _, err := e.SyncParlamentares(ctx, leg57); err != nil {
 		t.Fatal(err)
 	}
 	if n := contar(t, pool, `SELECT count(*) FROM parlamentares_exercicio`); n != 4 {

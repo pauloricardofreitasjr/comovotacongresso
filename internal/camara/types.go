@@ -27,6 +27,12 @@ type VotacaoDetalhe struct {
 	ObjetosPossiveis    []Proposicao `json:"objetosPossiveis"`
 }
 
+type Legislatura struct {
+	ID         int    `json:"id"`
+	DataInicio string `json:"dataInicio"`
+	DataFim    string `json:"dataFim"`
+}
+
 type Deputado struct {
 	ID            int    `json:"id"`
 	Nome          string `json:"nome"`

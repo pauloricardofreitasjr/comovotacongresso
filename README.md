@@ -50,7 +50,7 @@ Stack completa em containers: `docker compose --profile app up --build` (site em
 Variáveis: `DATABASE_URL` (obrigatória), `CAMARA_BASE_URL` e `CAMARA_MIN_INTERVAL_MS` (padrão 150) opcionais. Com `go run ./cmd/etl <comando>` ou `bin/etl`:
 
 ```bash
-etl sync-parlamentares                         # deputados da 57ª legislatura + períodos de exercício
+etl sync-parlamentares                         # deputados da legislatura vigente (e da anterior nos 90 dias após a virada) + períodos de exercício
 etl votacoes -from 2026-10-01 -to 2026-10-31   # votações do Plenário (pula as já gravadas; -force rebusca)
 etl daily                                      # ontem e hoje (rodar 1x/dia)
 etl backfill                                   # desde 2023-02-01: sync-parlamentares + votações em janelas de 30 dias

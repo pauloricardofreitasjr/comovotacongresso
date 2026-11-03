@@ -15,4 +15,17 @@ make psql      # shell no banco
 make down
 ```
 
-Estrutura: `cmd/api` (HTTP), `cmd/etl` (migrations e ingestão), `internal/` (httpclient, config, ...), `migrations/` (SQL, goose).
+## Ingestão (ETL da Câmara)
+
+Variáveis: `DATABASE_URL` (obrigatória), `CAMARA_BASE_URL` e `CAMARA_MIN_INTERVAL_MS` (padrão 150) opcionais. Com `go run ./cmd/etl <comando>` ou `bin/etl`:
+
+```bash
+etl sync-parlamentares                         # deputados da 57ª legislatura + períodos de exercício
+etl votacoes -from 2026-10-01 -to 2026-10-31   # votações do Plenário (pula as já gravadas; -force rebusca)
+etl daily                                      # ontem e hoje (rodar 1x/dia)
+etl backfill                                   # desde 2023-02-01: sync-parlamentares + votações em janelas de 30 dias
+```
+
+Tudo é idempotente; cada execução fica registrada em `etl_runs`/`etl_errors`. O `backfill` é retomável (pula votações já gravadas).
+
+Estrutura: `cmd/api` (HTTP), `cmd/etl` (migrations e ingestão), `internal/` (`domain` regras puras, `camara` cliente, `etl` orquestração, `store` Postgres, `httpclient`, ...), `migrations/` (SQL, goose).

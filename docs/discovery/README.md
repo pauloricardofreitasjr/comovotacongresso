@@ -90,6 +90,24 @@ Amostra: 5 votações de um evento (`idEvento=83057`) + 50 recentes + 75 sortead
 - Para **copiar fotos** para storage próprio, a base é a regra geral de reprodução com crédito, mas **sem cláusula explícita** na Câmara. Risco baixo, não zero.
 - Plano: (1) crédito de fonte visível no rodapé e em cada perfil; (2) pedir confirmação por escrito à Câmara (canal de atendimento do portal) e ao Senado antes do lançamento; (3) guardar `url_foto` original e servir o espelho com fallback para o link oficial; (4) não descaracterizar nem editar as imagens além de redimensionar.
 
+## 3.4 Achados da implementação da Fase 1 (API real, 2026-11-02)
+
+- **`/deputados?idLegislatura=57` repete deputados**: vem uma linha por (deputado, partido). 882 linhas para 648 deputados (197 com troca de partido). É preciso deduplicar por `id`; **`siglaPartido` da listagem não é confiável como partido atual** — usamos o partido do último intervalo de exercício.
+- **Situações de exercício na 57ª legislatura:** `Exercício` (abre), `CONVOCADO` e `null` (neutras), e que **encerram**: `Licença`, `SUPLENCIA`, `VACANCIA` (renúncia etc., 24 casos), `SUSPENSO` (3 casos). Outras legislaturas têm `FIM_MANDATO` e `Afastado`. O ETL avisa quando aparece situação desconhecida na legislatura processada.
+- **Validação:** com essas regras, **513 deputados** ficam com exercício em aberto hoje, igual ao número de cadeiras.
+- **Placar:** nas 3 votações nominais de 13–15/out/2026, os votos gravados batem exatamente com o placar escrito na descrição oficial (Sim/Não), mais o voto do presidente (`Artigo 17`).
+- **Condição eleitoral** inclui `EFETIVADO` (suplente efetivado), além de `Titular` e `Suplente`.
+- **Ritmo:** com 150 ms entre requisições e 4 votações em paralelo, ~0,6 s por votação; o sync de parlamentares (648 históricos) leva ~1m40s.
+
+### Backfill completo da Câmara (fev/2023 a 02/nov/2026, só Plenário)
+
+- **6.251 votações gravadas** (1.079 nominais, 5.172 simbólicas) e **436.085 votos individuais**; ~55 min com 150 ms entre requisições. 996 votações em 2023, 2.074 em 2024, 1.938 em 2025, 1.243 em 2026.
+- **83 votações (1,3%) listadas pela API não existem** no detalhe nem nos votos (404). Tratadas como "indisponíveis na fonte" (registradas em `etl_errors` com ref `indisponivel/…`, fora da contagem de erros).
+- **91 "adiadas"**: sem votos e sem resultado (`aprovacao` nulo). Não são gravadas; as recentes são reavaliadas pelo `daily`, as antigas provavelmente nunca ganham resultado.
+- **Defeito da fonte:** em 2 votações nominais (`2576389-4`, `2645346-18`) **todos os votos vêm com `tipoVoto: null`** (887 votos, gravados como `outro`). A presença é preservada; o alinhamento fica de fora. O placar só existe no texto da descrição.
+- **Orientação do Governo:** 490 nominais com "Sim", 344 com "Não", 28 "Liberado", 3 "Obstrução" e 214 sem orientação do Governo registrada. Logo, 337.775 dos 436.085 votos (77%) entram no cálculo de alinhamento.
+- **Vínculo com proposição:** 12 votações sem proposição; 1.650 com vínculo `provavel`, quase todas votações de procedimento ("Alteração do Regime de Tramitação…", "requerimento de urgência (art. 155)") ligadas à matéria a que se aplicam.
+
 ## 4. Ainda em aberto (não resolvido por Swagger nem por amostra)
 
 - Mapa partido→bloco/federação por votação e por legislatura (Câmara: ver `/blocos` e `/partidos/{id}`; Senado: `Bloco` em `senador/lista/atual` + `composicao/lista/partidos`).

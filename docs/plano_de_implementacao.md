@@ -57,7 +57,7 @@ Baseado em `documento_de_arquitetura_e_especifica_o_t_cnica.md`. O repositório 
 - Cliente HTTP compartilhado (`net/http` + `context`) com **retry + exponential backoff + jitter**, delay de 100–200 ms (§7.2), timeout e logging.
 - **Entrega:** `docker compose up` sobe banco migrado; testes do cliente HTTP passam.
 
-### Fase 1 — ETL Câmara, núcleo (≈3–4 dias)
+### Fase 1 — ETL Câmara, núcleo (≈3–4 dias) — **concluída**; ver README e `discovery/README.md` §3.4
 0. Listagem de votações filtrada por `idOrgao=180`, seguindo `links.next`; `/votos` e `/orientacoes` não paginam.
 1. Sync de parlamentares e **histórico de exercício** (`/deputados/{id}/historico` → `parlamentares_exercicio`), a partir de `/deputados?idLegislatura=`; upsert por `(id_externo, casa)`; o `deputado_` do voto também alimenta o cadastro.
 2. Ingestão de votações por janela de datas (o detalhe `/votacoes/{id}` é obrigatório: é ele que traz as proposições; salvar `vinculo_confianca`) (`/votacoes?dataInicio&dataFim`):

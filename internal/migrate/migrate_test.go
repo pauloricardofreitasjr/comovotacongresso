@@ -42,7 +42,7 @@ func TestMigracoes_UpDownUp(t *testing.T) {
 	tabelas := func() int {
 		var n int
 		err := admin.QueryRowContext(ctx,
-			`SELECT count(*) FROM information_schema.tables WHERE table_schema=$1 AND table_name <> 'goose_db_version'`,
+			`SELECT count(*) FROM information_schema.tables WHERE table_schema=$1 AND table_type='BASE TABLE' AND table_name <> 'goose_db_version'`,
 			schema).Scan(&n)
 		if err != nil {
 			t.Fatal(err)
@@ -56,8 +56,14 @@ func TestMigracoes_UpDownUp(t *testing.T) {
 	if n := tabelas(); n != 8 {
 		t.Fatalf("após up: %d tabelas, esperado 8", n)
 	}
-	if err := Run(dsn, "down"); err != nil {
-		t.Fatalf("down: %v", err)
+	var mvs int
+	if err := admin.QueryRowContext(ctx, `SELECT count(*) FROM pg_matviews WHERE schemaname=$1`, schema).Scan(&mvs); err != nil || mvs != 2 {
+		t.Fatalf("materialized views=%d err=%v, esperado 2", mvs, err)
+	}
+	for i := 0; i < 2; i++ { // uma migration por "down"
+		if err := Run(dsn, "down"); err != nil {
+			t.Fatalf("down %d: %v", i+1, err)
+		}
 	}
 	if n := tabelas(); n != 0 {
 		t.Fatalf("após down: %d tabelas, esperado 0", n)

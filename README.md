@@ -24,7 +24,10 @@ etl sync-parlamentares                         # deputados da 57ª legislatura +
 etl votacoes -from 2026-10-01 -to 2026-10-31   # votações do Plenário (pula as já gravadas; -force rebusca)
 etl daily                                      # ontem e hoje (rodar 1x/dia)
 etl backfill                                   # desde 2023-02-01: sync-parlamentares + votações em janelas de 30 dias
+etl metricas                                   # recalcula as materialized views (roda sozinho ao fim dos demais)
 ```
+
+Presença e alinhamento ficam em `mv_parlamentar_metricas` e `mv_partido_metricas`, recalculadas (`REFRESH ... CONCURRENTLY`) ao fim de cada ciclo; a API só lê delas.
 
 Tudo é idempotente; cada execução fica registrada em `etl_runs`/`etl_errors`. O `backfill` é retomável (pula votações já gravadas).
 

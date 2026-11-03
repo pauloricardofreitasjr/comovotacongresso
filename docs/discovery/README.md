@@ -108,6 +108,13 @@ Amostra: 5 votações de um evento (`idEvento=83057`) + 50 recentes + 75 sortead
 - **Orientação do Governo:** 490 nominais com "Sim", 344 com "Não", 28 "Liberado", 3 "Obstrução" e 214 sem orientação do Governo registrada. Logo, 337.775 dos 436.085 votos (77%) entram no cálculo de alinhamento.
 - **Vínculo com proposição:** 12 votações sem proposição; 1.650 com vínculo `provavel`, quase todas votações de procedimento ("Alteração do Regime de Tramitação…", "requerimento de urgência (art. 155)") ligadas à matéria a que se aplicam.
 
+## 3.5 Métricas (Fase 2) — resultados e pendências de validação
+
+- **Presença:** denominador = votações nominais ocorridas dentro de um período de exercício do deputado **mais** as em que ele votou (dado inconsistente nunca reduz a presença). Nenhum deputado passou de 100%. Média da Câmara: 79,1%.
+- **Governismo por partido** (partido do momento do voto): PT 97,8%, PCdoB 97,0%, PSB 92,3%, PSD 77,0%, UNIÃO 65,2%, PL 30,2%, NOVO 17,3%. Ordem coerente com o espectro político, o que valida a regra de alinhamento.
+- **A validar antes de publicar:** alguns deputados têm presença muito baixa em *todos* os trimestres (ex.: Isnaldo Bulhões Jr. 29%, Elmar Nascimento 29%, Luciano Bivar 32%), com exercício contínuo no histórico. O cálculo reflete os votos registrados pela API, mas **não há fonte independente conferida** (ex.: estatística oficial de presença da Câmara). Comparar com a página de presença de plenário da Câmara antes do lançamento; se houver divergência sistemática (ex.: votos de líderes registrados de outra forma), ajustar a metodologia.
+- 4 parlamentares sem nenhuma votação elegível (entraram e saíram sem votação nominal no período).
+
 ## 4. Ainda em aberto (não resolvido por Swagger nem por amostra)
 
 - Mapa partido→bloco/federação por votação e por legislatura (Câmara: ver `/blocos` e `/partidos/{id}`; Senado: `Bloco` em `senador/lista/atual` + `composicao/lista/partidos`).

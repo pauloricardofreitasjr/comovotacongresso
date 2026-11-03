@@ -298,3 +298,16 @@ func (s *Store) RegistrarErro(ctx context.Context, runID int64, ref, msg string)
 	_, err := s.pool.Exec(ctx, `INSERT INTO etl_errors (run_id, ref, mensagem) VALUES ($1, $2, $3)`, runID, trunc(ref, 150), msg)
 	return err
 }
+
+// metricas são as materialized views atualizadas ao fim de cada ciclo do ETL.
+var metricas = []string{"mv_parlamentar_metricas", "mv_partido_metricas"}
+
+// AtualizarMetricas recalcula as materialized views sem bloquear leituras (CONCURRENTLY).
+func (s *Store) AtualizarMetricas(ctx context.Context) error {
+	for _, mv := range metricas {
+		if _, err := s.pool.Exec(ctx, "REFRESH MATERIALIZED VIEW CONCURRENTLY "+mv); err != nil {
+			return fmt.Errorf("refresh %s: %w", mv, err)
+		}
+	}
+	return nil
+}

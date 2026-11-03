@@ -71,7 +71,7 @@ Baseado em `documento_de_arquitetura_e_especifica_o_t_cnica.md`. O repositório 
 - **Testes:** funções puras (`mapearVoto`, `calcularAlinhamento`) com tabela de casos do §4.3; ETL contra fixtures; re-execução não duplica.
 - **Entrega:** banco populado com 1 mês real de votações da Câmara.
 
-### Fase 2 — Métricas agregadas (≈1–2 dias)
+### Fase 2 — Métricas agregadas (≈1–2 dias) — **concluída**; ver migration `00002_metricas.sql`
 - Presença usa `parlamentares_exercicio` (votações nominais dentro do intervalo de exercício).
 - Materialized views: `mv_parlamentar_governismo`, `mv_parlamentar_presenca`, e agregado por partido/bancada. Índice único para `REFRESH ... CONCURRENTLY`.
 - Refresh ao fim de cada ciclo do ETL (§5 passo 3).

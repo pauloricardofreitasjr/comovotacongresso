@@ -276,6 +276,17 @@ func (e *ETL) processarVotacao(ctx context.Context, resumo camara.VotacaoResumo)
 	return tipo, nil
 }
 
+// AtualizarMetricas recalcula presença e alinhamento (materialized views). Deve rodar
+// ao fim de um ciclo, não a cada janela.
+func (e *ETL) AtualizarMetricas(ctx context.Context) error {
+	ini := time.Now()
+	if err := e.Store.AtualizarMetricas(ctx); err != nil {
+		return err
+	}
+	e.log().Info("métricas atualizadas", "duracao", time.Since(ini).Round(time.Millisecond))
+	return nil
+}
+
 func (e *ETL) finalizar(runID int64, err error) {
 	status, msg := "ok", ""
 	if err != nil {

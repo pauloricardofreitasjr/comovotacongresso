@@ -27,6 +27,7 @@ const (
 
 comandos:
   migrate | migrate-down | migrate-status
+  metricas                   recalcula presença e alinhamento (também roda ao fim dos demais)
   sync-parlamentares [-legislatura 57]
   votacoes -from AAAA-MM-DD -to AAAA-MM-DD [-force]
   daily                      votações de ontem e hoje (horário de Brasília)
@@ -61,7 +62,7 @@ func run(ctx context.Context, cmd string, args []string) error {
 		return migrate.Run(cfg.DatabaseURL, "down")
 	case "migrate-status":
 		return migrate.Run(cfg.DatabaseURL, "status")
-	case "sync-parlamentares", "votacoes", "daily", "backfill":
+	case "sync-parlamentares", "votacoes", "daily", "backfill", "metricas":
 		return ingestao(ctx, cfg, cmd, args)
 	default:
 		fmt.Fprint(os.Stderr, usage)
@@ -93,22 +94,31 @@ func ingestao(ctx context.Context, cfg config.Config, cmd string, args []string)
 	hoje := dia(time.Now().In(brasilia()))
 
 	switch cmd {
+	case "metricas":
+		return e.AtualizarMetricas(ctx)
+
 	case "sync-parlamentares":
-		_, err = e.SyncParlamentares(ctx, *legislatura)
-		return err
+		if _, err = e.SyncParlamentares(ctx, *legislatura); err != nil {
+			return err
+		}
+		return e.AtualizarMetricas(ctx)
 
 	case "votacoes":
 		ini, fim, err := intervalo(*from, *to, hoje)
 		if err != nil {
 			return err
 		}
-		_, err = e.IngerirVotacoes(ctx, ini, fim, !*force)
-		return err
+		if _, err = e.IngerirVotacoes(ctx, ini, fim, !*force); err != nil {
+			return err
+		}
+		return e.AtualizarMetricas(ctx)
 
 	case "daily":
 		// reprocessa D-1 e D: votações recentes podem ganhar resultado/ajustes depois.
-		_, err = e.IngerirVotacoes(ctx, hoje.AddDate(0, 0, -1), hoje, false)
-		return err
+		if _, err = e.IngerirVotacoes(ctx, hoje.AddDate(0, 0, -1), hoje, false); err != nil {
+			return err
+		}
+		return e.AtualizarMetricas(ctx)
 
 	case "backfill":
 		if *from == "" {
@@ -137,7 +147,7 @@ func ingestao(ctx context.Context, cfg config.Config, cmd string, args []string)
 			total.Erros += r.Erros
 		}
 		slog.Info("backfill concluído", "resumo", total)
-		return nil
+		return e.AtualizarMetricas(ctx)
 	}
 	return nil
 }

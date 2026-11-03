@@ -21,7 +21,7 @@ func utc(s string) time.Time {
 
 type linha struct {
 	elegiveis, presente, base, alinhadas int
-	pctParticipacao, pctGov                  *float64
+	pctParticipacao, pctGov              *float64
 	emExercicio                          bool
 }
 

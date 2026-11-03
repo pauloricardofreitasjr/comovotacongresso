@@ -33,7 +33,9 @@ export default async function Image({ params }: { params: Promise<{ id: string }
           <CaixaNumero numero={formatInt(r.nao)} rotulo={`votaram Não · ${formatPct(r.total > 0 ? (r.nao / r.total) * 100 : null)}`} fundo={COR.naoFundo} cor={COR.nao} />
         </div>
       ) : (
-        <div style={{ display: "flex", fontSize: 32, color: COR.suave }}>Votação simbólica: não há registro do voto de cada deputado.</div>
+        <div style={{ display: "flex", fontSize: 32, color: COR.suave }}>
+          {v.tipo === "nominal" ? "Os votos individuais estão ocultos por erro na fonte." : "Votação simbólica: não há registro do voto de cada deputado."}
+        </div>
       )}
     </div>,
   );

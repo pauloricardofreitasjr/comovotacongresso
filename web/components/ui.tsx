@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { compararComMedia, formatInt, formatPct, iniciais, infoVoto, query, rotuloResultado } from "@/lib/format";
 import { divergeDaDescricao, notaResultado, resultadoCoerente } from "@/lib/resultado";
-import type { ResumoVotos, TipoVotacao } from "@/lib/types";
+import type { Quarentena, ResumoVotos, TipoVotacao } from "@/lib/types";
 
 export function TipoBadge({ tipo }: { tipo: TipoVotacao }) {
   return tipo === "nominal" ? (
@@ -223,6 +223,29 @@ export function NotasDoPlacar({
         </div>
       ) : null}
     </>
+  );
+}
+
+/** Aviso de votação em quarentena: a lista de votos veio com erro da fonte (oculta) ou repete outra votação (não conta duas vezes). */
+export function AvisoQuarentena({ q }: { q: Quarentena }) {
+  const outra = q.repete ? <Link href={`/votacoes/${encodeURIComponent(q.repete)}`}>outra votação</Link> : "outra votação";
+  return q.motivo === "lista_duplicada" ? (
+    <div className="aviso atencao" id="nota-resultado">
+      <p><strong>Os votos individuais desta votação estão ocultos.</strong></p>
+      <p>
+        A lista de votos que a Câmara publica para ela é idêntica à de {outra}, e o placar escrito na descrição oficial não combina com essa lista.
+        Isso indica um erro na fonte, e mostrar a lista atribuiria a cada deputado um voto que provavelmente não foi o dele. Mostramos só o resultado
+        e a descrição oficiais, e esta votação não entra nas estatísticas dos deputados.
+      </p>
+    </div>
+  ) : (
+    <div className="aviso atencao">
+      <p><strong>Esta votação parece ser um registro repetido de {outra}.</strong></p>
+      <p>
+        Os votos são os mesmos nas duas. Mantemos os dois registros, mas esta votação não é contada de novo nas estatísticas nem no histórico dos
+        deputados, para o mesmo voto não valer duas vezes.
+      </p>
+    </div>
   );
 }
 

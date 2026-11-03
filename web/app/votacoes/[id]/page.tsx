@@ -8,7 +8,7 @@ import type { Voto } from "@/lib/types";
 import { Compartilhar } from "@/components/Compartilhar";
 import { metaCompartilhavel, resumir } from "@/lib/compartilhar";
 import { SITE_URL } from "@/lib/site";
-import { Aviso, limpar, NotasDoPlacar, Pessoa, Paginacao, Placar, ResultadoBadge, TipoBadge, VotoChip } from "@/components/ui";
+import { Aviso, AvisoQuarentena, limpar, NotasDoPlacar, Pessoa, Paginacao, Placar, ResultadoBadge, TipoBadge, VotoChip } from "@/components/ui";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
@@ -103,6 +103,7 @@ export default async function Votacao({ params, searchParams }: Props) {
           texto={`${v.proposicao ? v.proposicao.identificacao : "Votação"}${v.resumo_votos ? `: ${formatInt(v.resumo_votos.sim)} Sim × ${formatInt(v.resumo_votos.nao)} Não` : ""}. Veja como cada deputado votou:`}
         />
       </header>
+      {v.quarentena ? <AvisoQuarentena q={v.quarentena} /> : null}
       {v.vinculo_confianca === "provavel" ? (
         <Aviso atencao>
           <p>A relação desta votação com {v.proposicao?.identificacao} foi inferida automaticamente e pode não ser exata.</p>

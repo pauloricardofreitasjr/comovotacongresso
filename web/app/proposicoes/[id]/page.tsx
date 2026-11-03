@@ -74,6 +74,8 @@ export default async function Proposicao({ params }: Props) {
                 <Placar resumo={destaque.resumo_votos} />
                 <NotasDoPlacar aprovada={destaque.aprovada} resumo={destaque.resumo_votos} descricao={destaque.descricao} />
               </>
+            ) : destaque.tipo === "nominal" ? (
+              <p className="muted" style={{ margin: 0 }}>Os votos individuais desta votação estão ocultos por erro na fonte; veja a explicação na página da votação.</p>
             ) : (
               <p className="muted" style={{ margin: 0 }}>Votação simbólica: não há voto individual registrado, só o resultado.</p>
             )}
@@ -101,6 +103,7 @@ export default async function Proposicao({ params }: Props) {
                     <strong>{formatDataHora(v.data_hora)}</strong>
                     <TipoBadge tipo={v.tipo} />
                     <ResultadoBadge aprovada={v.aprovada} />
+                    {v.quarentena ? <span className="badge neutra" title="A lista de votos desta votação veio com erro da fonte ou repete outra.">Em quarentena</span> : null}
                   </div>
                   <p className="clamp" style={{ margin: ".35rem 0" }}>{limpar(v.descricao)}</p>
                   {v.resumo_votos ? <BarraVotos resumo={v.resumo_votos} /> : null}

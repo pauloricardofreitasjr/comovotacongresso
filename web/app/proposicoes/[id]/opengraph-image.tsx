@@ -37,7 +37,8 @@ export default async function Image({ params }: { params: Promise<{ id: string }
         </div>
       ) : (
         <div style={{ display: "flex", fontSize: 30, color: COR.suave }}>
-          {plural(p.total_votacoes, "votação", "votações")} no Plenário · só votação simbólica, sem voto de cada deputado.
+          {plural(p.total_votacoes, "votação", "votações")} no Plenário ·{" "}
+          {destaque?.tipo === "nominal" ? "votos individuais ocultos por erro na fonte." : "só votação simbólica, sem voto de cada deputado."}
         </div>
       )}
     </div>,

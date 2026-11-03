@@ -98,6 +98,7 @@ Por isso, todas as taxas deste site se baseiam **somente em votações nominais*
 
 - Os dados vêm da Câmara; erros ou atrasos na fonte aparecem aqui também.
 - O resultado de cada votação (aprovada ou rejeitada) é o que a Câmara registrou, e não o recalculamos. Ele pode não seguir "mais Sim que Não": requerimento de urgência e projeto de lei complementar exigem maioria absoluta, emenda à Constituição exige 3/5, e há empates decididos pelo presidente. Quando isso acontece, a página da votação mostra uma nota.
+- Em casos raros a Câmara publica a mesma lista de votos para votações diferentes. Quando a descrição oficial mostra que a lista é de outra votação, ocultamos os votos individuais e tiramos a votação das estatísticas dos deputados, para não atribuir a ninguém um voto que provavelmente não foi dele. Quando é o mesmo ato registrado duas vezes, contamos uma só. A página da votação explica o caso.
 - Em raros casos o placar escrito na descrição oficial de uma votação difere da lista de votos individuais que a própria Câmara publica. Nesses casos mostramos os votos como registrados e avisamos da diferença.
 - Pequenas diferenças em relação a outros sites podem ocorrer por causa do período considerado, das votações incluídas ou do momento da atualização.
 - Os cálculos são feitos por código aberto, publicado em <https://github.com/pauloricardofreitasjr/comovotacongresso>; qualquer pessoa pode conferir as regras.

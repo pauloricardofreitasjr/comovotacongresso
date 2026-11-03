@@ -603,3 +603,90 @@ func TestIndicePrincipal(t *testing.T) {
 		}
 	}
 }
+
+// Quarentena: QB repete a lista de votos de QA, mas a descrição dela não bate; QD é o mesmo ato de QC registrado de novo.
+func TestQuarentena_ApiOcultaVotosETiraDoHistoricoEDaPrincipal(t *testing.T) {
+	pool := testdb.Novo(t)
+	s := store.New(pool)
+	ctx := context.Background()
+	var ps []store.ParlamentarIn
+	for i := 1; i <= 22; i++ {
+		ps = append(ps, store.ParlamentarIn{IDExterno: i, Nome: "Dep " + itoa(i), Partido: "PT"})
+	}
+	ids, err := s.UpsertParlamentares(ctx, ps, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	votosDe := func(simAte int) []store.VotoIn {
+		var vs []store.VotoIn
+		for i := 1; i <= 22; i++ {
+			v := domain.VotoNao
+			if i <= simAte {
+				v = domain.VotoSim
+			}
+			vs = append(vs, store.VotoIn{Parlamentar: store.ParlamentarIn{IDExterno: i, Nome: "x"}, Voto: v, Partido: "PT"})
+		}
+		return vs
+	}
+	prop := &domain.Prop{ID: 900, SiglaTipo: "PL", Numero: 5230, Ano: 2023, Ementa: "Teste de quarentena"}
+	salvar := func(id, quando, desc string, votos []store.VotoIn) {
+		if err := s.SalvarVotacao(ctx, store.VotacaoIn{ID: id, DataHora: utc(quando), Descricao: desc, Tipo: domain.VotacaoNominal,
+			Aprovada: ptr(true), Proposicao: prop, Vinculo: domain.ConfDireto, Votos: votos}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	salvar("QA", "2025-03-01 12:00", "Mantido o texto. Sim: 15; não: 7; total: 22.", votosDe(15))
+	salvar("QB", "2025-03-01 22:00", "Rejeitada a Emenda nº 40. Sim: 3; não: 19; total: 22.", votosDe(15)) // mais recente e com o mesmo total: ganharia como principal
+	salvar("QC", "2025-03-05 12:00", "Rejeitado o Recurso. Sim: 10; não: 12; total: 22.", votosDe(10))
+	salvar("QD", "2025-03-05 12:01", "Rejeitado o Recurso nº 3.", votosDe(10))
+	if err := s.AtualizarMetricas(ctx); err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(Router(s, pool, slog.New(slog.NewTextHandler(io.Discard, nil))))
+	t.Cleanup(srv.Close)
+
+	// lista trocada: sem votos, sem placar, com o motivo e a votação de origem
+	_, o, _ := get(t, srv, "/api/v1/votacoes/QB")
+	q, _ := o["quarentena"].(obj)
+	if o["votos_individuais"] != false || o["votos"] != nil || o["resumo_votos"] != nil || q["motivo"] != "lista_duplicada" || q["repete"] != "QA" {
+		t.Errorf("QB: %v", o)
+	}
+	// mesmo ato registrado duas vezes: os votos continuam disponíveis, com o aviso
+	_, o, _ = get(t, srv, "/api/v1/votacoes/QD")
+	q, _ = o["quarentena"].(obj)
+	if o["votos_individuais"] != true || len(lista(o, "votos")) != 22 || q["motivo"] != "registro_duplicado" || q["repete"] != "QC" {
+		t.Errorf("QD: %v", q)
+	}
+	// votação normal: sem o campo
+	if _, o, _ = get(t, srv, "/api/v1/votacoes/QA"); o["quarentena"] != nil {
+		t.Errorf("QA não deveria ter quarentena: %v", o["quarentena"])
+	}
+
+	// a votação com lista trocada não pode ser a "principal" da lei (empataria em votos e ganharia por ser a mais recente)
+	var propID int
+	if _, o, _ = get(t, srv, "/api/v1/proposicoes?busca=quarentena"); len(lista(o, "dados")) == 1 {
+		propID = int(lista(o, "dados")[0]["id"].(float64))
+	}
+	_, o, _ = get(t, srv, "/api/v1/proposicoes/"+itoa(propID))
+	for _, v := range lista(o, "votacoes") {
+		if v["principal"] == true && (v["id"] == "QB" || v["id"] == "QD") {
+			t.Errorf("votação em quarentena virou principal: %v", v["id"])
+		}
+		if v["id"] == "QB" && v["resumo_votos"] != nil {
+			t.Errorf("QB não deveria ter resumo na lei: %v", v)
+		}
+	}
+	_, o, _ = get(t, srv, "/api/v1/proposicoes")
+	if un, ok := lista(o, "dados")[0]["ultima_nominal"].(obj); !ok || un["votacao_id"] == "QB" {
+		t.Errorf("última nominal da lista não pode ser a de lista trocada: %v", un)
+	}
+
+	// histórico e métricas do deputado: só QA e QC contam
+	_, o, _ = get(t, srv, "/api/v1/parlamentares/"+itoa(ids[1]))
+	if o["votos"].(obj)["total"].(float64) != 2 {
+		t.Errorf("histórico: %v", o["votos"].(obj)["total"])
+	}
+	if p := o["metricas"].(obj)["participacao_votacoes_nominais"].(obj); p["votacoes_elegiveis"].(float64) != 2 || p["votacoes_votou"].(float64) != 2 {
+		t.Errorf("participação: %v", p)
+	}
+}

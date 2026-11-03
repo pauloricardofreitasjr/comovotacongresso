@@ -44,6 +44,12 @@ export type ResumoVotos = {
   total: number;
 };
 
+export type Quarentena = {
+  /** lista_duplicada: votos individuais ocultos. registro_duplicado: votos válidos, mas repetem outra votação. */
+  motivo: "lista_duplicada" | "registro_duplicado";
+  repete: string | null;
+};
+
 export type TipoVotacao = "nominal" | "simbolica";
 export type Vinculo = "direto" | "provavel" | null;
 
@@ -57,6 +63,8 @@ export type VotacaoLinha = {
   orientacao_governo: string | null;
   resumo_votos: ResumoVotos | null;
   principal?: boolean;
+  /** Presente quando a lista de votos está em quarentena (erro na fonte); ver docs/discovery §3.5. */
+  quarentena?: Quarentena;
 };
 
 export type ProposicaoDetalhe = ProposicaoResumo & { votacoes: VotacaoLinha[] };

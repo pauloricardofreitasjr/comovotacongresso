@@ -325,10 +325,62 @@ var metricas = []string{"mv_parlamentar_metricas", "mv_partido_metricas", "mv_pa
 
 // AtualizarMetricas recalcula as materialized views sem bloquear leituras (CONCURRENTLY).
 func (s *Store) AtualizarMetricas(ctx context.Context) error {
+	// a quarentena decide quais votações entram nas métricas: recalcula antes de atualizar as views.
+	if err := s.AtualizarQuarentena(ctx); err != nil {
+		return err
+	}
 	for _, mv := range metricas {
 		if _, err := s.pool.Exec(ctx, "REFRESH MATERIALIZED VIEW CONCURRENTLY "+mv); err != nil {
 			return fmt.Errorf("refresh %s: %w", mv, err)
 		}
+	}
+	return nil
+}
+
+// MinVotosQuarentena é o tamanho mínimo de uma lista de votos para ser comparada com a de outra votação:
+// listas pequenas podem coincidir por acaso, e uma lista idêntica de 20 ou mais votos, não.
+const MinVotosQuarentena = 20
+
+// AtualizarQuarentena marca as votações nominais cuja lista de votos é idêntica à de outra (mesmos
+// parlamentares com os mesmos votos). Em cada grupo de listas idênticas:
+//   - as votações cuja descrição oficial traz um placar diferente da lista têm a lista trocada
+//     (lista_duplicada), desde que exista no grupo uma votação consistente; se nenhuma for consistente,
+//     nenhuma lista é confiável e todas entram em lista_duplicada;
+//   - se todas são consistentes (ou sem placar na descrição), é o mesmo ato registrado mais de uma vez:
+//     a mais antiga fica como referência e as demais viram registro_duplicado.
+//
+// É recalculada por inteiro a cada chamada (idempotente) e desfaz marcas que deixaram de valer.
+func (s *Store) AtualizarQuarentena(ctx context.Context) error {
+	_, err := s.pool.Exec(ctx, `
+		WITH listas AS (
+			SELECT x.votacao_id,
+			       md5(string_agg(x.parlamentar_id || ':' || x.voto::text, ',' ORDER BY x.parlamentar_id)) AS hash,
+			       count(*) FILTER (WHERE x.voto = 'sim') AS sim, count(*) FILTER (WHERE x.voto = 'nao') AS nao
+			FROM votos x JOIN votacoes v ON v.id = x.votacao_id AND v.tipo = 'nominal'
+			GROUP BY x.votacao_id HAVING count(*) >= $1
+		), base AS (
+			SELECT l.votacao_id, l.hash, v.data_hora,
+			       coalesce((regexp_match(v.descricao, 'sim:\s*([0-9]+)', 'i'))[1]::int <> l.sim
+			             OR (regexp_match(v.descricao, 'n[ãa]o:\s*([0-9]+)', 'i'))[1]::int <> l.nao, false) AS diverge
+			FROM listas l JOIN votacoes v ON v.id = l.votacao_id
+		), grupos AS (
+			SELECT b.*, count(*) OVER (PARTITION BY hash) AS tam,
+			       bool_or(NOT diverge) OVER (PARTITION BY hash) AS ha_consistente,
+			       first_value(votacao_id) OVER (PARTITION BY hash ORDER BY diverge, data_hora, votacao_id) AS ref
+			FROM base b
+		), alvo AS (
+			SELECT votacao_id,
+			       CASE WHEN diverge THEN 'lista_duplicada'
+			            WHEN votacao_id <> ref THEN 'registro_duplicado' END AS q,
+			       CASE WHEN votacao_id <> ref THEN ref END AS ref
+			FROM grupos WHERE tam > 1
+		)
+		UPDATE votacoes v SET quarentena = a.q, quarentena_ref = a.ref
+		FROM (SELECT vv.id, al.q, al.ref FROM votacoes vv LEFT JOIN alvo al ON al.votacao_id = vv.id) a
+		WHERE v.id = a.id AND (v.quarentena IS DISTINCT FROM a.q OR v.quarentena_ref IS DISTINCT FROM a.ref)`,
+		MinVotosQuarentena)
+	if err != nil {
+		return fmt.Errorf("atualizar quarentena: %w", err)
 	}
 	return nil
 }

@@ -58,10 +58,24 @@ type votacaoLinha struct {
 	OrientacaoGoverno *string      `json:"orientacao_governo"`
 	ResumoVotos       *resumoVotos `json:"resumo_votos"` // null em votação simbólica
 	Principal         bool         `json:"principal,omitempty"`
+	// presente só quando a lista de votos desta votação está em quarentena (ver docs/discovery §3.5)
+	Quarentena *quarentenaDTO `json:"quarentena,omitempty"`
+}
+
+// quarentenaDTO: motivo = lista_duplicada (os votos individuais foram ocultados) ou registro_duplicado
+// (os votos são válidos, mas a votação repete outra e não conta duas vezes). repete = id da outra votação.
+type quarentenaDTO struct {
+	Motivo string  `json:"motivo"`
+	Repete *string `json:"repete"`
 }
 
 func toVotacaoLinha(l store.VotacaoLinha) votacaoLinha {
-	return votacaoLinha{l.ID, l.DataHora, l.Descricao, l.Tipo, l.Aprovada, l.Vinculo, l.OrientacaoGoverno, toResumo(l.Resumo), false}
+	out := votacaoLinha{ID: l.ID, DataHora: l.DataHora, Descricao: l.Descricao, Tipo: l.Tipo, Aprovada: l.Aprovada, VinculoConfianca: l.Vinculo,
+		OrientacaoGoverno: l.OrientacaoGoverno, ResumoVotos: toResumo(l.Resumo)}
+	if l.Quarentena != nil {
+		out.Quarentena = &quarentenaDTO{*l.Quarentena, l.QuarentenaRef}
+	}
+	return out
 }
 
 // ---------- /status ----------
@@ -203,7 +217,7 @@ func indicePrincipal(vs []store.VotacaoLinha) int {
 	direto := func(v store.VotacaoLinha) bool { return v.Vinculo != nil && *v.Vinculo == "direto" }
 	melhor, maxVotos := -1, -1
 	for i, v := range vs {
-		if v.Tipo == "nominal" && direto(v) && v.Resumo != nil && v.Resumo.Total >= maxVotos {
+		if v.Tipo == "nominal" && direto(v) && v.Resumo != nil && v.Quarentena == nil && v.Resumo.Total >= maxVotos {
 			melhor, maxVotos = i, v.Resumo.Total
 		}
 	}

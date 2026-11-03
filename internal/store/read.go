@@ -155,7 +155,7 @@ func (s *Store) preencherUltimaNominal(ctx context.Context, ps []ProposicaoResum
 		       (SELECT count(*) FROM votos x WHERE x.votacao_id = v.id AND x.voto = 'sim'),
 		       (SELECT count(*) FROM votos x WHERE x.votacao_id = v.id AND x.voto = 'nao')
 		FROM votacoes v
-		WHERE v.proposicao_id = ANY($1) AND v.tipo = 'nominal'
+		WHERE v.proposicao_id = ANY($1) AND v.tipo = 'nominal' AND v.quarentena IS DISTINCT FROM 'lista_duplicada'
 		ORDER BY v.proposicao_id, v.data_hora DESC, v.id DESC`, ids)
 	if err != nil {
 		return err
@@ -185,7 +185,14 @@ type VotacaoLinha struct {
 	Aprovada          *bool
 	Vinculo           *string
 	OrientacaoGoverno *string
-	Resumo            *ResumoVotos // nil se não for nominal
+	Resumo            *ResumoVotos // nil se não for nominal ou se a lista de votos estiver em quarentena (lista_duplicada)
+	Quarentena        *string      // lista_duplicada | registro_duplicado (ver migration 00005)
+	QuarentenaRef     *string      // id da votação cuja lista esta repete
+}
+
+// ListaOculta diz se os votos individuais desta votação não devem ser mostrados nem contados.
+func (l VotacaoLinha) ListaOculta() bool {
+	return l.Quarentena != nil && *l.Quarentena == "lista_duplicada"
 }
 
 type ProposicaoDetalhe struct {
@@ -224,6 +231,7 @@ func (s *Store) GetProposicao(ctx context.Context, id int) (*ProposicaoDetalhe, 
 
 const votacoesBase = `
 	SELECT v.id, v.data_hora, coalesce(v.descricao,''), v.tipo::text, v.aprovada, v.vinculo_confianca::text, v.orientacao_governo::text,
+	       v.quarentena, v.quarentena_ref,
 	       count(x.id), count(x.id) FILTER (WHERE x.voto='sim'), count(x.id) FILTER (WHERE x.voto='nao'),
 	       count(x.id) FILTER (WHERE x.voto='abstencao'), count(x.id) FILTER (WHERE x.voto='obstrucao'),
 	       count(x.id) FILTER (WHERE x.voto='artigo_17'), count(x.id) FILTER (WHERE x.voto='outro')
@@ -232,11 +240,11 @@ const votacoesBase = `
 func scanVotacaoLinha(r pgx.Rows) (VotacaoLinha, error) {
 	var l VotacaoLinha
 	var rs ResumoVotos
-	if err := r.Scan(&l.ID, &l.DataHora, &l.Descricao, &l.Tipo, &l.Aprovada, &l.Vinculo, &l.OrientacaoGoverno,
+	if err := r.Scan(&l.ID, &l.DataHora, &l.Descricao, &l.Tipo, &l.Aprovada, &l.Vinculo, &l.OrientacaoGoverno, &l.Quarentena, &l.QuarentenaRef,
 		&rs.Total, &rs.Sim, &rs.Nao, &rs.Abstencao, &rs.Obstrucao, &rs.Artigo17, &rs.Outro); err != nil {
 		return l, err
 	}
-	if l.Tipo == "nominal" {
+	if l.Tipo == "nominal" && !l.ListaOculta() {
 		l.Resumo = &rs
 	}
 	return l, nil
@@ -322,7 +330,7 @@ func (s *Store) GetVotacao(ctx context.Context, id string) (*VotacaoDetalhe, err
 		return nil, err
 	}
 
-	if d.Tipo == "nominal" {
+	if d.Tipo == "nominal" && !d.ListaOculta() {
 		vrows, err := s.pool.Query(ctx, `
 			SELECT p.id, p.nome, x.partido_na_votacao, p.uf, p.url_foto, x.voto::text, x.alinhou_governo
 			FROM votos x JOIN parlamentares p ON p.id = x.parlamentar_id
@@ -545,7 +553,8 @@ func (s *Store) GetParlamentar(ctx context.Context, id int, f FiltroVotos, limit
 	}
 
 	// $1 = parlamentar; condições do filtro vêm depois e valem também para a recontagem de uma página vazia.
-	condVotos := "x.parlamentar_id = $1"
+	// votações em quarentena (lista trocada ou repetida) ficam fora do histórico: o voto seria falso ou contado duas vezes
+	condVotos := "x.parlamentar_id = $1 AND x.votacao_id NOT IN (SELECT id FROM votacoes WHERE quarentena IS NOT NULL)"
 	argsVotos := []any{id}
 	if f.Voto != "" {
 		argsVotos = append(argsVotos, f.Voto)

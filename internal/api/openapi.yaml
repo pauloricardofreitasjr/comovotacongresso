@@ -57,6 +57,10 @@ paths:
     get:
       summary: Votação, orientações das bancadas e votos individuais
       description: |
+        `quarentena` (só quando existe) marca uma votação cuja lista de votos veio com erro da fonte
+        (`motivo: lista_duplicada`: os votos individuais são ocultados, `votos` e `resumo_votos` vêm `null` e a votação
+        não entra nas métricas) ou repete outra (`motivo: registro_duplicado`: os votos são válidos, mas a votação não
+        conta duas vezes nas métricas); `repete` é o id da outra votação. A marcação é recalculada pelo ETL.
         Em votação **simbólica** não existe voto individual: `votos_individuais` é `false`, `votos` e
         `resumo_votos` são `null`. `vinculo_confianca` = `provavel` indica que a proposição foi inferida
         (comum em votações de procedimento).

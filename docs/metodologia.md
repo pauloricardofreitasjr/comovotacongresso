@@ -49,6 +49,19 @@ Por isso, todas as taxas deste site se baseiam **somente em votações nominais*
 - Não distinguimos o motivo de um voto não registrado (ausência justificada ou não, ou simplesmente não votar). `[Avaliar usar dados de presença em sessão da Câmara em fase posterior.]`
 - Suplentes têm poucas votações, então um percentual alto ou baixo pesa pouco. Mostramos sempre a quantidade de votações ao lado do percentual.
 
+## 4.1 Presença em sessões
+
+**O que mede:** em quantas sessões deliberativas do Plenário o deputado registrou presença, entre as que começaram enquanto ele estava em exercício. É a presença oficial registrada pela Câmara.
+
+> Presença em sessões (%) = sessões deliberativas com presença registrada ÷ sessões deliberativas iniciadas durante o exercício × 100
+
+**Regras:**
+- Contam só **sessões deliberativas encerradas** do Plenário. Sessões solenes, não deliberativas, comissões gerais e sessões em andamento ficam de fora.
+- O dado da Câmara informa quem **registrou presença**; não distingue ausência justificada de não justificada. `[Avaliar fonte para ausências justificadas.]`
+- Períodos de licença ou afastamento não entram, como na participação nas votações.
+
+**Como ler junto da participação nas votações:** a presença em sessão costuma ser mais alta (média de 92%) que a participação nas votações nominais (média de 79%). Um deputado pode registrar presença e não votar em várias nominais. Mostramos as duas medidas lado a lado, sem somá-las nem misturá-las.
+
 ## 5. Alinhamento com o governo
 
 **O que mede:** com que frequência o deputado votou como o Governo pediu.

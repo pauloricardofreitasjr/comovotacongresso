@@ -30,6 +30,7 @@ comandos:
   metricas                   recalcula presença e alinhamento (também roda ao fim dos demais)
   sync-parlamentares [-legislatura 57]
   votacoes -from AAAA-MM-DD -to AAAA-MM-DD [-force]
+  sessoes  -from AAAA-MM-DD -to AAAA-MM-DD [-force]   presença oficial em sessões deliberativas
   daily                      votações de ontem e hoje (horário de Brasília)
   backfill [-from 2023-02-01] [-to hoje] [-legislatura 57]
 `
@@ -62,7 +63,7 @@ func run(ctx context.Context, cmd string, args []string) error {
 		return migrate.Run(cfg.DatabaseURL, "down")
 	case "migrate-status":
 		return migrate.Run(cfg.DatabaseURL, "status")
-	case "sync-parlamentares", "votacoes", "daily", "backfill", "metricas":
+	case "sync-parlamentares", "votacoes", "daily", "backfill", "metricas", "sessoes":
 		return ingestao(ctx, cfg, cmd, args)
 	default:
 		fmt.Fprint(os.Stderr, usage)
@@ -113,9 +114,22 @@ func ingestao(ctx context.Context, cfg config.Config, cmd string, args []string)
 		}
 		return e.AtualizarMetricas(ctx)
 
+	case "sessoes":
+		ini, fim, err := intervalo(*from, *to, hoje)
+		if err != nil {
+			return err
+		}
+		if _, err = e.IngerirSessoes(ctx, ini, fim, !*force); err != nil {
+			return err
+		}
+		return e.AtualizarMetricas(ctx)
+
 	case "daily":
 		// reprocessa D-1 e D: votações recentes podem ganhar resultado/ajustes depois.
 		if _, err = e.IngerirVotacoes(ctx, hoje.AddDate(0, 0, -1), hoje, false); err != nil {
+			return err
+		}
+		if _, err = e.IngerirSessoes(ctx, hoje.AddDate(0, 0, -1), hoje, false); err != nil {
 			return err
 		}
 		return e.AtualizarMetricas(ctx)
@@ -135,6 +149,9 @@ func ingestao(ctx context.Context, cfg config.Config, cmd string, args []string)
 		for _, j := range janelas(ini, fim, janelaBackfillDias) {
 			r, err := e.IngerirVotacoes(ctx, j[0], j[1], !*force)
 			if err != nil {
+				return err
+			}
+			if _, err := e.IngerirSessoes(ctx, j[0], j[1], !*force); err != nil {
 				return err
 			}
 			total.Total += r.Total

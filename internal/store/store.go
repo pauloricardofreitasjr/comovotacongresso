@@ -300,7 +300,7 @@ func (s *Store) RegistrarErro(ctx context.Context, runID int64, ref, msg string)
 }
 
 // metricas são as materialized views atualizadas ao fim de cada ciclo do ETL.
-var metricas = []string{"mv_parlamentar_metricas", "mv_partido_metricas"}
+var metricas = []string{"mv_parlamentar_metricas", "mv_partido_metricas", "mv_parlamentar_presenca_sessao", "mv_partido_presenca_sessao"}
 
 // AtualizarMetricas recalcula as materialized views sem bloquear leituras (CONCURRENTLY).
 func (s *Store) AtualizarMetricas(ctx context.Context) error {
@@ -310,4 +310,70 @@ func (s *Store) AtualizarMetricas(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+type SessaoIn struct {
+	IDExterno int
+	Inicio    time.Time
+	Fim       *time.Time
+	Tipo      string
+	Descricao string
+	Presentes []ParlamentarIn
+}
+
+func (s *Store) SessaoExiste(ctx context.Context, idExterno int) (bool, error) {
+	var ok bool
+	err := s.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM sessoes WHERE id_externo = $1 AND casa = $2)`, idExterno, casaCamara).Scan(&ok)
+	return ok, err
+}
+
+// SalvarSessao grava a sessão e substitui a lista de presença, numa única transação.
+func (s *Store) SalvarSessao(ctx context.Context, in SessaoIn) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	var id int
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO sessoes (id_externo, casa, inicio, fim, tipo, descricao)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (id_externo, casa) DO UPDATE SET
+			inicio = EXCLUDED.inicio, fim = EXCLUDED.fim, tipo = EXCLUDED.tipo, descricao = EXCLUDED.descricao
+		RETURNING id`,
+		in.IDExterno, casaCamara, in.Inicio, in.Fim, trunc(in.Tipo, 60), nullIfEmpty(in.Descricao)).Scan(&id); err != nil {
+		return fmt.Errorf("upsert sessão: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM sessoes_presencas WHERE sessao_id = $1`, id); err != nil {
+		return err
+	}
+	if len(in.Presentes) > 0 {
+		ids, err := upsertParlamentares(ctx, tx, in.Presentes, false)
+		if err != nil {
+			return err
+		}
+		pids := make([]int32, 0, len(in.Presentes))
+		partidos := make([]*string, 0, len(in.Presentes))
+		visto := make(map[int]bool, len(in.Presentes))
+		for _, p := range in.Presentes {
+			if visto[p.IDExterno] {
+				continue
+			}
+			visto[p.IDExterno] = true
+			pid, ok := ids[p.IDExterno]
+			if !ok {
+				return fmt.Errorf("parlamentar %d não encontrado após upsert", p.IDExterno)
+			}
+			pids = append(pids, int32(pid))
+			partidos = append(partidos, nullIfEmpty(trunc(p.Partido, 30)))
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO sessoes_presencas (sessao_id, parlamentar_id, partido_na_sessao)
+			SELECT $1, t.pid, t.partido FROM unnest($2::int[], $3::text[]) AS t(pid, partido)`,
+			id, pids, partidos); err != nil {
+			return fmt.Errorf("inserir presenças: %w", err)
+		}
+	}
+	return tx.Commit(ctx)
 }

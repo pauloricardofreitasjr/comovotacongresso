@@ -55,6 +55,15 @@ type HistoricoEvento struct {
 	CondicaoEleitoral string `json:"condicaoEleitoral"`
 }
 
+type Evento struct {
+	ID             int    `json:"id"`
+	DataHoraInicio string `json:"dataHoraInicio"`
+	DataHoraFim    string `json:"dataHoraFim"`
+	Situacao       string `json:"situacao"`
+	DescricaoTipo  string `json:"descricaoTipo"`
+	Descricao      string `json:"descricao"`
+}
+
 type link struct {
 	Rel  string `json:"rel"`
 	Href string `json:"href"`

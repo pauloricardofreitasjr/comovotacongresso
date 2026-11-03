@@ -151,3 +151,32 @@ func TestParseDataHora(t *testing.T) {
 		t.Error("esperava erro")
 	}
 }
+
+func TestEventosEEventoDeputados(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/eventos":
+			q := r.URL.Query()
+			if q.Get("idOrgao") != "180" || q.Get("dataInicio") != "2026-10-12" || q.Get("dataFim") != "2026-10-16" {
+				t.Errorf("query inesperada: %s", r.URL.RawQuery)
+			}
+			w.Write(fixture(t, "camara_eventos_plen.json"))
+		case "/eventos/83057/deputados":
+			w.Write(fixture(t, "camara_evento_83057_deputados.json"))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+	c := novoCliente(srv)
+
+	ini, fim := time.Date(2026, 10, 12, 0, 0, 0, 0, time.UTC), time.Date(2026, 10, 16, 0, 0, 0, 0, time.UTC)
+	evs, err := c.Eventos(t.Context(), ini, fim, OrgaoPlenario)
+	if err != nil || len(evs) != 3 || evs[1].ID != 83057 || evs[1].DescricaoTipo != "Sessão Deliberativa" || evs[1].Situacao != "Encerrada" {
+		t.Fatalf("eventos=%+v err=%v", evs, err)
+	}
+	deps, err := c.EventoDeputados(t.Context(), 83057)
+	if err != nil || len(deps) != 502 || deps[0].ID == 0 {
+		t.Fatalf("deputados=%d err=%v", len(deps), err)
+	}
+}

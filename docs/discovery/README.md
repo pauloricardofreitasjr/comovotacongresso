@@ -128,6 +128,15 @@ A presença oficial da Câmara é por **sessão** (registro de presença), dispo
 - A Aos Fatos documenta erros frequentes na leitura dos dados de presença da Câmara; reforça a necessidade de nomear e explicar cada métrica.
 - 4 parlamentares ficaram sem nenhuma votação elegível (entraram e saíram sem nominal no período).
 
+## 3.6 Presença oficial em sessão (implementada)
+
+- **Fonte:** `GET /eventos?idOrgao=180` (filtra `descricaoTipo = "Sessão Deliberativa"` e `situacao = "Encerrada"`) + `GET /eventos/{id}/deputados` (quem registrou presença). Só lista presentes; não informa ausência justificada.
+- **Carga real (fev/2023 a nov/2026):** 393 sessões deliberativas, ~1m20s, sem erros; 2 não encerradas ficam de fora até terminarem (o `daily` reprocessa D-1 e D).
+- **Elegibilidade:** sessões iniciadas durante um período de exercício do deputado, mais aquelas em que registrou presença. Mesmo desenho da participação nominal.
+- **Conferência:** para 2025, os números do banco coincidem com o cálculo independente anterior (ex.: Isnaldo Bulhões Jr. 58 presenças, Bivar 59, Elmar 98; 120 sessões encerradas contra 121 sem o filtro de situação).
+- **Presença média (período inteiro): 92,3%**, contra 79,1% de participação nas nominais. Exemplo extremo: Antonio Brito, 100% de presença em sessão e 35% de participação nas nominais.
+- As duas métricas são mantidas separadas, com nomes próprios (`pct_presenca_sessao` e `pct_participacao`).
+
 ## 4. Ainda em aberto (não resolvido por Swagger nem por amostra)
 
 - Mapa partido→bloco/federação por votação e por legislatura (Câmara: ver `/blocos` e `/partidos/{id}`; Senado: `Bloco` em `senador/lista/atual` + `composicao/lista/partidos`).

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -27,6 +28,8 @@ type Fonte interface {
 	Orientacoes(ctx context.Context, id string) ([]camara.Orientacao, error)
 	Deputados(ctx context.Context, legislatura int) ([]camara.Deputado, error)
 	Historico(ctx context.Context, idDeputado int) ([]camara.HistoricoEvento, error)
+	Eventos(ctx context.Context, ini, fim time.Time, idOrgao int) ([]camara.Evento, error)
+	EventoDeputados(ctx context.Context, idEvento int) ([]camara.Deputado, error)
 }
 
 type ETL struct {
@@ -274,6 +277,90 @@ func (e *ETL) processarVotacao(ctx context.Context, resumo camara.VotacaoResumo)
 		return "", err
 	}
 	return tipo, nil
+}
+
+const (
+	tipoSessaoDeliberativa = "Sessão Deliberativa"
+	situacaoEncerrada      = "Encerrada"
+)
+
+var errSemPresencas = errors.New("sessão encerrada sem lista de presença na fonte")
+
+// IngerirSessoes grava a presença oficial nas sessões deliberativas encerradas do Plenário.
+// Sessões não deliberativas, em andamento ou canceladas são ignoradas (contam em Adiadas).
+func (e *ETL) IngerirSessoes(ctx context.Context, ini, fim time.Time, pularExistentes bool) (res Resumo, err error) {
+	runID, err := e.Store.IniciarRun(ctx, "sessoes", map[string]any{
+		"de": ini.Format("2006-01-02"), "ate": fim.Format("2006-01-02"), "pular_existentes": pularExistentes,
+	})
+	if err != nil {
+		return res, err
+	}
+	defer func() { e.finalizar(runID, err) }()
+
+	eventos, err := e.Fonte.Eventos(ctx, ini, fim, camara.OrgaoPlenario)
+	if err != nil {
+		return res, fmt.Errorf("listar eventos: %w", err)
+	}
+	for _, ev := range eventos {
+		if err := ctx.Err(); err != nil {
+			return res, err
+		}
+		if ev.DescricaoTipo != tipoSessaoDeliberativa {
+			continue // solenes, comissões gerais etc. não entram
+		}
+		res.Total++
+		if ev.Situacao != situacaoEncerrada {
+			res.Adiadas++
+			continue
+		}
+		if pularExistentes {
+			if existe, err := e.Store.SessaoExiste(ctx, ev.ID); err == nil && existe {
+				res.Puladas++
+				continue
+			}
+		}
+		if err := e.processarSessao(ctx, ev); err != nil {
+			switch {
+			case naoEncontrado(err), errors.Is(err, errSemPresencas):
+				res.Indisponiveis++
+				e.registrarErro(ctx, runID, fmt.Sprintf("indisponivel/sessao/%d", ev.ID), err)
+			case ctx.Err() != nil:
+				return res, ctx.Err()
+			default:
+				res.Erros++
+				e.registrarErro(ctx, runID, fmt.Sprintf("sessao/%d", ev.ID), err)
+			}
+			continue
+		}
+		res.Processadas++
+	}
+	e.log().Info("sessões ingeridas", "de", ini.Format("2006-01-02"), "ate", fim.Format("2006-01-02"), "resumo", res)
+	return res, nil
+}
+
+func (e *ETL) processarSessao(ctx context.Context, ev camara.Evento) error {
+	deps, err := e.Fonte.EventoDeputados(ctx, ev.ID)
+	if err != nil {
+		return fmt.Errorf("presenças: %w", err)
+	}
+	if len(deps) == 0 {
+		return errSemPresencas
+	}
+	inicio, err := camara.ParseDataHora(ev.DataHoraInicio)
+	if err != nil {
+		return err
+	}
+	in := store.SessaoIn{IDExterno: ev.ID, Inicio: inicio, Tipo: ev.DescricaoTipo, Descricao: strings.TrimSpace(ev.Descricao)}
+	if ev.DataHoraFim != "" {
+		if f, err := camara.ParseDataHora(ev.DataHoraFim); err == nil {
+			in.Fim = &f
+		}
+	}
+	in.Presentes = make([]store.ParlamentarIn, len(deps))
+	for i, d := range deps {
+		in.Presentes[i] = paraParlamentar(d)
+	}
+	return e.Store.SalvarSessao(ctx, in)
 }
 
 // AtualizarMetricas recalcula presença e alinhamento (materialized views). Deve rodar

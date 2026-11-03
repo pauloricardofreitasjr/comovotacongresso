@@ -53,14 +53,14 @@ func TestMigracoes_UpDownUp(t *testing.T) {
 	if err := Run(dsn, "up"); err != nil {
 		t.Fatalf("up: %v", err)
 	}
-	if n := tabelas(); n != 8 {
-		t.Fatalf("após up: %d tabelas, esperado 8", n)
+	if n := tabelas(); n != 10 {
+		t.Fatalf("após up: %d tabelas, esperado 10", n)
 	}
 	var mvs int
-	if err := admin.QueryRowContext(ctx, `SELECT count(*) FROM pg_matviews WHERE schemaname=$1`, schema).Scan(&mvs); err != nil || mvs != 2 {
-		t.Fatalf("materialized views=%d err=%v, esperado 2", mvs, err)
+	if err := admin.QueryRowContext(ctx, `SELECT count(*) FROM pg_matviews WHERE schemaname=$1`, schema).Scan(&mvs); err != nil || mvs != 4 {
+		t.Fatalf("materialized views=%d err=%v, esperado 4", mvs, err)
 	}
-	for i := 0; i < 2; i++ { // uma migration por "down"
+	for i := 0; i < 3; i++ { // uma migration por "down"
 		if err := Run(dsn, "down"); err != nil {
 			t.Fatalf("down %d: %v", i+1, err)
 		}

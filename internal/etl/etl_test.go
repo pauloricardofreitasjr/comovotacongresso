@@ -47,6 +47,8 @@ func servidor(t *testing.T) *httptest.Server {
 		"/votacoes/" + idPendente:                   `{"dados":{"id":"9999999-1","dataHoraRegistro":"2026-10-30T10:00:00","siglaOrgao":"PLEN","descricao":"em andamento","aprovacao":null},"links":[]}`,
 		"/votacoes/" + idPendente + "/votos":        `{"dados":[],"links":[]}`,
 		"/votacoes/" + idPendente + "/orientacoes":  `{"dados":[],"links":[]}`,
+		"/eventos/83057/deputados":                  amostra(t, "camara_evento_83057_deputados.json"),
+		"/eventos/99001/deputados":                  `{"dados":[],"links":[]}`,
 		"/deputados/178843/historico":               amostra(t, "camara_dep_historico.json"),
 		"/deputados/103758/historico":               amostra(t, "camara_dep_historico_suplente.json"),
 	}
@@ -58,6 +60,12 @@ func servidor(t *testing.T) *httptest.Server {
 				{"id":%q,"dataHoraRegistro":"2026-10-28T16:52:36","descricao":"y","aprovacao":1},
 				{"id":%q,"dataHoraRegistro":"2026-10-30T10:00:00","descricao":"z","aprovacao":null}],"links":[]}`,
 				idNominal, idSimbolica, idPendente)
+		case "/eventos":
+			fmt.Fprint(w, `{"dados":[
+				{"id":83057,"dataHoraInicio":"2026-10-14T14:23","dataHoraFim":"2026-10-14T20:55","situacao":"Encerrada","descricaoTipo":"Sessão Deliberativa","descricao":"Sessão Deliberativa Extraordinária\r\n"},
+				{"id":83060,"dataHoraInicio":"2026-10-14T10:00","dataHoraFim":"2026-10-14T11:00","situacao":"Encerrada","descricaoTipo":"Sessão Não Deliberativa Solene","descricao":"Solene"},
+				{"id":83070,"dataHoraInicio":"2026-10-16T14:00","dataHoraFim":"","situacao":"Em Andamento","descricaoTipo":"Sessão Deliberativa","descricao":"em andamento"},
+				{"id":99001,"dataHoraInicio":"2026-10-15T14:00","dataHoraFim":"2026-10-15T16:00","situacao":"Encerrada","descricaoTipo":"Sessão Deliberativa","descricao":"sem lista"}],"links":[]}`)
 		case "/deputados":
 			fmt.Fprint(w, `{"dados":[
 				{"id":178843,"nome":"Marx Beltrão","siglaPartido":"TESTE","siglaUf":"AL","idLegislatura":57,"urlFoto":"http://f/1.jpg"},
@@ -312,5 +320,54 @@ func TestIngerirVotacoes_DetalheInexistenteNaoEhErro(t *testing.T) {
 	}
 	if n := contar(t, pool, `SELECT count(*) FROM etl_errors WHERE ref=$1`, "indisponivel/"+idNominal); n != 1 {
 		t.Errorf("deveria registrar a indisponibilidade, linhas=%d", n)
+	}
+}
+
+func TestIngerirSessoes_FimAFim(t *testing.T) {
+	pool := testdb.Novo(t)
+	srv := servidor(t)
+	defer srv.Close()
+	e := novoETL(t, pool, srv)
+	ctx := context.Background()
+	ini, fim := janela()
+
+	res, err := e.IngerirSessoes(ctx, ini, fim, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 3 deliberativas (a solene é ignorada): 1 ok, 1 em andamento (adiada), 1 encerrada sem lista (indisponível)
+	want := Resumo{Total: 3, Processadas: 1, Adiadas: 1, Indisponiveis: 1}
+	if res != want {
+		t.Fatalf("resumo=%+v, esperado %+v", res, want)
+	}
+	if n := contar(t, pool, `SELECT count(*) FROM sessoes`); n != 1 {
+		t.Errorf("sessoes=%d", n)
+	}
+	if n := contar(t, pool, `SELECT count(*) FROM sessoes_presencas`); n != 502 {
+		t.Errorf("presenças=%d", n)
+	}
+	if n := contar(t, pool, `SELECT count(*) FROM etl_errors WHERE ref='indisponivel/sessao/99001'`); n != 1 {
+		t.Error("sessão sem lista deveria ser registrada como indisponível")
+	}
+
+	// idempotente + pularExistentes
+	if _, err := e.IngerirSessoes(ctx, ini, fim, false); err != nil {
+		t.Fatal(err)
+	}
+	if n := contar(t, pool, `SELECT count(*) FROM sessoes_presencas`); n != 502 {
+		t.Errorf("presenças após reexecução=%d", n)
+	}
+	r2, err := e.IngerirSessoes(ctx, ini, fim, true)
+	if err != nil || r2.Puladas != 1 || r2.Processadas != 0 {
+		t.Fatalf("resumo=%+v err=%v", r2, err)
+	}
+
+	// métricas: deputado presente na única sessão elegível → 100%
+	if err := e.AtualizarMetricas(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if n := contar(t, pool, `SELECT count(*) FROM mv_parlamentar_presenca_sessao m JOIN parlamentares p ON p.id=m.parlamentar_id
+		WHERE p.id_externo=204436 AND m.sessoes_elegiveis=1 AND m.sessoes_presente=1 AND m.pct_presenca_sessao=100`); n != 1 {
+		t.Error("presença em sessão do deputado 204436 deveria ser 1/1")
 	}
 }

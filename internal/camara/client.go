@@ -72,6 +72,25 @@ func (c *Client) Deputados(ctx context.Context, legislatura int) ([]Deputado, er
 	return paginado[Deputado](ctx, c, c.base+"/deputados?"+q.Encode())
 }
 
+// Eventos lista os eventos do órgão no intervalo [ini, fim] (datas), seguindo a paginação.
+func (c *Client) Eventos(ctx context.Context, ini, fim time.Time, idOrgao int) ([]Evento, error) {
+	q := url.Values{}
+	q.Set("idOrgao", fmt.Sprint(idOrgao))
+	q.Set("dataInicio", ini.Format("2006-01-02"))
+	q.Set("dataFim", fim.Format("2006-01-02"))
+	q.Set("itens", fmt.Sprint(itensPorPagina))
+	q.Set("ordem", "ASC")
+	q.Set("ordenarPor", "dataHoraInicio")
+	return paginado[Evento](ctx, c, c.base+"/eventos?"+q.Encode())
+}
+
+// EventoDeputados lista os deputados com presença registrada no evento (sessão).
+func (c *Client) EventoDeputados(ctx context.Context, idEvento int) ([]Deputado, error) {
+	var env envelope[[]Deputado]
+	err := c.http.GetJSON(ctx, fmt.Sprintf("%s/eventos/%d/deputados", c.base, idEvento), &env)
+	return env.Dados, err
+}
+
 func (c *Client) Historico(ctx context.Context, idDeputado int) ([]HistoricoEvento, error) {
 	var env envelope[[]HistoricoEvento]
 	err := c.http.GetJSON(ctx, fmt.Sprintf("%s/deputados/%d/historico", c.base, idDeputado), &env)

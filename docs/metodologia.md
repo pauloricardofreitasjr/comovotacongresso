@@ -28,23 +28,25 @@ Por isso, todas as taxas deste site se baseiam **somente em votações nominais*
 - **Fora do site:** votações em comissões.
 - Votações de procedimento (requerimentos, urgências, alterações de regime) aparecem junto da matéria a que se referem. Quando não conseguimos identificar a matéria com segurança, a votação aparece em "Outras votações". Quando o vínculo é provável, mas não certo, o site avisa.
 
-## 4. Presença em plenário
+## 4. Participação nas votações nominais
 
 **O que mede:** em quantas votações nominais o deputado registrou voto, entre as que aconteceram enquanto ele estava em exercício.
 
+> **Não é a "presença em plenário" oficial.** A Câmara registra presença por *sessão*; um deputado pode registrar presença na sessão e não votar em várias votações nominais. Em 2025, a presença média em sessão foi de 88% e a participação média nas votações nominais foi de 75%. As duas medidas se parecem (correlação 0,79), mas não são a mesma coisa. `[Se a presença oficial em sessão entrar no site, será apresentada como outra métrica, com nome próprio.]`
+
 **Como calculamos:**
 
-> Presença (%) = votações nominais em que o deputado votou ÷ votações nominais ocorridas durante o seu exercício × 100
+> Participação (%) = votações nominais em que o deputado registrou voto ÷ votações nominais ocorridas durante o seu exercício × 100
 
 **Regras:**
-- Contam como presença os votos **Sim, Não, Abstenção, Obstrução** e o voto do presidente da sessão (Artigo 17). Quem se abstém ou obstrui estava presente.
-- Se o deputado não aparece na lista de votos de uma votação nominal, contamos como **ausente**.
-- **Só contam as votações em que o deputado estava em exercício.** Períodos de licença, afastamento ou antes da posse (no caso de suplentes) não entram no cálculo, para não punir quem não era titular na data.
+- Contam como voto registrado **Sim, Não, Abstenção, Obstrução** e o voto do presidente da sessão (Artigo 17).
+- Se o deputado não aparece na lista de votos de uma votação nominal, contamos como **voto não registrado**. Isso não significa, por si só, que ele estava ausente da sessão.
+- **Só contam as votações em que o deputado estava em exercício.** Períodos de licença, afastamento ou antes da posse (no caso de suplentes) não entram no cálculo.
 - Votações simbólicas não entram.
 
 **Cuidados ao interpretar:**
-- Um deputado pode estar em Brasília e não votar (por exemplo, em reunião de comissão). Mostramos o registro de voto, não o motivo da ausência.
-- Ausências justificadas e não justificadas aparecem juntas. `[Avaliar se vale separar usando os dados de presença da Câmara em fase posterior.]`
+- Registrar presença na sessão e votar são atos diferentes. Um percentual baixo mostra pouco registro de voto nas nominais, não necessariamente ausência da Câmara.
+- Não distinguimos o motivo de um voto não registrado (ausência justificada ou não, ou simplesmente não votar). `[Avaliar usar dados de presença em sessão da Câmara em fase posterior.]`
 - Suplentes têm poucas votações, então um percentual alto ou baixo pesa pouco. Mostramos sempre a quantidade de votações ao lado do percentual.
 
 ## 5. Alinhamento com o governo
@@ -69,7 +71,7 @@ Por isso, todas as taxas deste site se baseiam **somente em votações nominais*
 - "Alinhado ao governo" **não** significa "a favor do Presidente". Significa que o voto coincidiu com a orientação registrada naquele dia. O Governo muda ao longo do tempo, e o cálculo sempre usa a orientação da data da votação.
 - Abstenção e obstrução contam como "não alinhado" porque diferem do que o Governo pediu. É uma escolha de regra; `[detalhar o impacto no site: mostrar também quantas abstenções e obstruções houve]`.
 - O voto do presidente da sessão (Artigo 17) e votos sem orientação do Governo não entram.
-- Ausências não contam como "contra o governo": quem não votou fica fora do cálculo de alinhamento (e entra na presença).
+- Ausências não contam como "contra o governo": quem não votou fica fora do cálculo de alinhamento (e entra na participação, como voto não registrado).
 - Mostramos sempre quantas votações entraram no cálculo. Percentuais com poucas votações dizem pouco.
 
 ## 6. O que não medimos

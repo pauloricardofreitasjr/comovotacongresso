@@ -1,10 +1,12 @@
 -- +goose Up
 -- Métricas agregadas (§4.4 do doc de arquitetura, ajustadas pelo discovery).
+-- "participacao" = votos registrados nas votações nominais. NÃO é a presença oficial em sessão
+-- (registro de presença da Câmara): ver docs/discovery/README.md §3.5.
 -- Atualizadas após cada ciclo do ETL (REFRESH ... CONCURRENTLY), nunca calculadas na requisição.
 
 -- Quais votações nominais "contam" para cada parlamentar: as ocorridas durante um período
 -- de exercício dele, mais aquelas em que ele votou (dado inconsistente nunca derruba a
--- presença abaixo do real). O partido vem do voto quando existe, senão do período de exercício.
+-- participação abaixo do real). O partido vem do voto quando existe, senão do período de exercício.
 CREATE VIEW v_elegibilidade AS
 SELECT DISTINCT ON (parlamentar_id, votacao_id) parlamentar_id, votacao_id, partido
 FROM (
@@ -31,8 +33,8 @@ SELECT
     p.url_foto,
     EXISTS (SELECT 1 FROM parlamentares_exercicio e WHERE e.parlamentar_id = p.id AND e.fim IS NULL) AS em_exercicio,
     COUNT(el.votacao_id) AS votacoes_elegiveis,
-    COUNT(v.id) AS votacoes_presente,
-    ROUND(100.0 * COUNT(v.id) / NULLIF(COUNT(el.votacao_id), 0), 2) AS pct_presenca,
+    COUNT(v.id) AS votacoes_votou,
+    ROUND(100.0 * COUNT(v.id) / NULLIF(COUNT(el.votacao_id), 0), 2) AS pct_participacao,
     COUNT(v.id) FILTER (WHERE v.alinhou_governo IS NOT NULL) AS votacoes_base_governo,
     COUNT(v.id) FILTER (WHERE v.alinhou_governo) AS votacoes_alinhadas_governo,
     ROUND(
@@ -47,7 +49,7 @@ GROUP BY p.id
 WITH DATA;
 
 CREATE UNIQUE INDEX uq_mv_parlamentar_metricas ON mv_parlamentar_metricas (parlamentar_id);
-CREATE INDEX idx_mv_parlamentar_presenca ON mv_parlamentar_metricas (casa, pct_presenca DESC);
+CREATE INDEX idx_mv_parlamentar_participacao ON mv_parlamentar_metricas (casa, pct_participacao DESC);
 CREATE INDEX idx_mv_parlamentar_governista ON mv_parlamentar_metricas (casa, pct_governista DESC);
 
 -- Por partido: o partido é o do momento da votação (não o atual), então trocas de partido
@@ -58,8 +60,8 @@ SELECT
     COALESCE(el.partido, '(sem partido)') AS partido,
     COUNT(DISTINCT el.parlamentar_id) AS parlamentares,
     COUNT(el.votacao_id) AS votacoes_elegiveis,
-    COUNT(v.id) AS votacoes_presente,
-    ROUND(100.0 * COUNT(v.id) / NULLIF(COUNT(el.votacao_id), 0), 2) AS pct_presenca,
+    COUNT(v.id) AS votacoes_votou,
+    ROUND(100.0 * COUNT(v.id) / NULLIF(COUNT(el.votacao_id), 0), 2) AS pct_participacao,
     COUNT(v.id) FILTER (WHERE v.alinhou_governo IS NOT NULL) AS votacoes_base_governo,
     COUNT(v.id) FILTER (WHERE v.alinhou_governo) AS votacoes_alinhadas_governo,
     ROUND(

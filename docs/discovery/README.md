@@ -108,12 +108,25 @@ Amostra: 5 votações de um evento (`idEvento=83057`) + 50 recentes + 75 sortead
 - **Orientação do Governo:** 490 nominais com "Sim", 344 com "Não", 28 "Liberado", 3 "Obstrução" e 214 sem orientação do Governo registrada. Logo, 337.775 dos 436.085 votos (77%) entram no cálculo de alinhamento.
 - **Vínculo com proposição:** 12 votações sem proposição; 1.650 com vínculo `provavel`, quase todas votações de procedimento ("Alteração do Regime de Tramitação…", "requerimento de urgência (art. 155)") ligadas à matéria a que se aplicam.
 
-## 3.5 Métricas (Fase 2) — resultados e pendências de validação
+## 3.5 Métricas (Fase 2) — resultados e validação da "presença"
 
-- **Presença:** denominador = votações nominais ocorridas dentro de um período de exercício do deputado **mais** as em que ele votou (dado inconsistente nunca reduz a presença). Nenhum deputado passou de 100%. Média da Câmara: 79,1%.
+- **Participação em votações nominais** (antes chamada "presença"): denominador = votações nominais ocorridas dentro de um período de exercício do deputado **mais** as em que ele votou; numerador = votos registrados. Nenhum deputado passou de 100%.
 - **Governismo por partido** (partido do momento do voto): PT 97,8%, PCdoB 97,0%, PSB 92,3%, PSD 77,0%, UNIÃO 65,2%, PL 30,2%, NOVO 17,3%. Ordem coerente com o espectro político, o que valida a regra de alinhamento.
-- **A validar antes de publicar:** alguns deputados têm presença muito baixa em *todos* os trimestres (ex.: Isnaldo Bulhões Jr. 29%, Elmar Nascimento 29%, Luciano Bivar 32%), com exercício contínuo no histórico. O cálculo reflete os votos registrados pela API, mas **não há fonte independente conferida** (ex.: estatística oficial de presença da Câmara). Comparar com a página de presença de plenário da Câmara antes do lançamento; se houver divergência sistemática (ex.: votos de líderes registrados de outra forma), ajustar a metodologia.
-- 4 parlamentares sem nenhuma votação elegível (entraram e saíram sem votação nominal no período).
+
+### Validação contra a presença oficial em sessão (2025)
+
+A presença oficial da Câmara é por **sessão** (registro de presença), disponível em `GET /eventos/{id}/deputados` (lista quem registrou presença; ex.: 502 deputados na sessão de 14/10/2026; não informa ausência justificada). Comparei, para 2025, as 121 sessões deliberativas do Plenário com os votos nas 408 votações nominais:
+
+| | Resultado |
+|---|---|
+| Presença média em sessão | 88,4% |
+| Participação média nas nominais | 75,0% |
+| Correlação entre as duas | 0,79 |
+
+- As duas métricas são **diferentes**. Há deputados com 96–99% de presença em sessão e só 22–26% de votos nas nominais (ex.: Antonio Brito, Pinheirinho), e líderes como Elmar Nascimento (81% sessão, 29% nominais). Portanto os números baixos **não são erro de cálculo**: o deputado registra presença, mas não vota em muitas nominais.
+- **Decisão:** a métrica foi renomeada para **participação em votações nominais** (`pct_participacao`, `votacoes_votou`) e não deve ser apresentada como "presença em plenário". A presença oficial em sessão é uma métrica separada, possível via `/eventos/{id}/deputados` (≈120 sessões/ano × 1 chamada), a decidir se entra no produto.
+- A Aos Fatos documenta erros frequentes na leitura dos dados de presença da Câmara; reforça a necessidade de nomear e explicar cada métrica.
+- 4 parlamentares ficaram sem nenhuma votação elegível (entraram e saíram sem nominal no período).
 
 ## 4. Ainda em aberto (não resolvido por Swagger nem por amostra)
 

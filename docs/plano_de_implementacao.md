@@ -19,7 +19,7 @@ Baseado em `documento_de_arquitetura_e_especifica_o_t_cnica.md`. O repositório 
 - **Público:** MVP voltado ao **eleitor/cidadão** (linguagem simples, busca por parlamentar e matéria, perfis e rankings). Recursos para jornalistas e pesquisadores (filtros avançados, exportação CSV, API pública documentada, metodologia detalhada) ficam documentados como **v2**.
 
 - **Senado:** fora do MVP; entra na v1.1, depois da Câmara.
-- **Presença:** denominador = votações nominais ocorridas enquanto o parlamentar estava em exercício (exige datas de exercício/suplência por mandato).
+- **Participação em votações nominais** (antes "presença"; renomeada após validação, ver `discovery/README.md` §3.5): denominador = votações nominais ocorridas enquanto o parlamentar estava em exercício (exige datas de exercício/suplência por mandato).
 - **Governismo:** mantida a regra do §4.3 (abstenção/obstrução com orientação Sim ou Não contam como não alinhado).
 - **Hospedagem:** VPS/PaaS barato (até ~US$30/mês): um container Go, Postgres pequeno, CDN gratuita na frente, **sem Redis no início**.
 
@@ -30,6 +30,8 @@ Baseado em `documento_de_arquitetura_e_especifica_o_t_cnica.md`. O repositório 
 
 - **Produto:** nome **Como Vota Congresso**; domínio `www.comovotacongresso.com.br` (decisões para a Fase 6: DNS, HTTPS, CDN, `canonical` sem/com `www`).
 - **Metodologia pública:** rascunho em `docs/metodologia.md` (aguardando revisão; deve estar publicada antes do lançamento e linkada no rodapé).
+
+- **A decidir:** incluir a presença oficial em sessão (`/eventos/{id}/deputados`) como métrica separada. Custo baixo (~120 chamadas/ano); valor alto para o eleitor, que entende "presença" como a medida oficial.
 
 ## 1. Lacunas e decisões a fechar antes/durante (encontradas no doc)
 

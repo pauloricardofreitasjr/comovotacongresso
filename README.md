@@ -27,7 +27,7 @@ etl backfill                                   # desde 2023-02-01: sync-parlamen
 etl metricas                                   # recalcula as materialized views (roda sozinho ao fim dos demais)
 ```
 
-Presença e alinhamento ficam em `mv_parlamentar_metricas` e `mv_partido_metricas`, recalculadas (`REFRESH ... CONCURRENTLY`) ao fim de cada ciclo; a API só lê delas.
+Participação em votações nominais e alinhamento ao governo (não é a presença oficial em sessão; ver `docs/discovery/README.md` §3.5) ficam em `mv_parlamentar_metricas` e `mv_partido_metricas`, recalculadas (`REFRESH ... CONCURRENTLY`) ao fim de cada ciclo; a API só lê delas.
 
 Tudo é idempotente; cada execução fica registrada em `etl_runs`/`etl_errors`. O `backfill` é retomável (pula votações já gravadas).
 

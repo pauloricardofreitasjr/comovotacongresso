@@ -21,7 +21,7 @@ func utc(s string) time.Time {
 
 type linha struct {
 	elegiveis, presente, base, alinhadas int
-	pctPresenca, pctGov                  *float64
+	pctParticipacao, pctGov                  *float64
 	emExercicio                          bool
 }
 
@@ -74,8 +74,8 @@ func TestMetricas_DatasetSintetico(t *testing.T) {
 	salvar("V5", "2025-03-02 13:00", domain.VotacaoSimbolica)
 
 	ler := func() map[int]linha {
-		rows, err := pool.Query(ctx, `SELECT id_externo, votacoes_elegiveis, votacoes_presente, votacoes_base_governo,
-			votacoes_alinhadas_governo, pct_presenca::float8, pct_governista::float8, em_exercicio FROM mv_parlamentar_metricas`)
+		rows, err := pool.Query(ctx, `SELECT id_externo, votacoes_elegiveis, votacoes_votou, votacoes_base_governo,
+			votacoes_alinhadas_governo, pct_participacao::float8, pct_governista::float8, em_exercicio FROM mv_parlamentar_metricas`)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -84,7 +84,7 @@ func TestMetricas_DatasetSintetico(t *testing.T) {
 		for rows.Next() {
 			var ext int
 			var l linha
-			if err := rows.Scan(&ext, &l.elegiveis, &l.presente, &l.base, &l.alinhadas, &l.pctPresenca, &l.pctGov, &l.emExercicio); err != nil {
+			if err := rows.Scan(&ext, &l.elegiveis, &l.presente, &l.base, &l.alinhadas, &l.pctParticipacao, &l.pctGov, &l.emExercicio); err != nil {
 				t.Fatal(err)
 			}
 			out[ext] = l
@@ -115,8 +115,8 @@ func TestMetricas_DatasetSintetico(t *testing.T) {
 			continue
 		}
 		if g.elegiveis != w.elegiveis || g.presente != w.presente || g.base != w.base || g.alinhadas != w.alinhadas ||
-			g.emExercicio != w.emExercicio || !igual(g.pctPresenca, w.pctPresenca) || !igual(g.pctGov, w.pctGov) {
-			t.Errorf("parlamentar %d: got %+v / pct=%v,%v, esperado %+v / pct=%v,%v", ext, g, deref(g.pctPresenca), deref(g.pctGov), w, deref(w.pctPresenca), deref(w.pctGov))
+			g.emExercicio != w.emExercicio || !igual(g.pctParticipacao, w.pctParticipacao) || !igual(g.pctGov, w.pctGov) {
+			t.Errorf("parlamentar %d: got %+v / pct=%v,%v, esperado %+v / pct=%v,%v", ext, g, deref(g.pctParticipacao), deref(g.pctGov), w, deref(w.pctParticipacao), deref(w.pctGov))
 		}
 	}
 
@@ -130,8 +130,8 @@ func TestMetricas_DatasetSintetico(t *testing.T) {
 		"PSD": {1, 2, 0, 0, f(0), nil},
 		"PL":  {1, 1, 1, 1, f(100), f(100)},
 	}
-	rows, err := pool.Query(ctx, `SELECT partido, parlamentares, votacoes_elegiveis, votacoes_presente, votacoes_base_governo,
-		pct_presenca::float8, pct_governista::float8 FROM mv_partido_metricas`)
+	rows, err := pool.Query(ctx, `SELECT partido, parlamentares, votacoes_elegiveis, votacoes_votou, votacoes_base_governo,
+		pct_participacao::float8, pct_governista::float8 FROM mv_partido_metricas`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +158,7 @@ func TestMetricas_DatasetSintetico(t *testing.T) {
 	if err := s.AtualizarMetricas(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if c := ler()[3]; c.presente != 1 || c.pctPresenca == nil || *c.pctPresenca != 50 || c.pctGov == nil || *c.pctGov != 100 {
+	if c := ler()[3]; c.presente != 1 || c.pctParticipacao == nil || *c.pctParticipacao != 50 || c.pctGov == nil || *c.pctGov != 100 {
 		t.Errorf("C após voto em V4: %+v", c)
 	}
 }

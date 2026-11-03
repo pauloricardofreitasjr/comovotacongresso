@@ -1,0 +1,99 @@
+# Discovery — APIs da Câmara e do Senado
+
+Feito em 2026-11-02 a partir dos Swaggers oficiais e de chamadas reais. Specs completas em `raw/`, amostras de resposta em `samples/` (usar como fixtures do ETL).
+
+- Câmara: spec em `https://dadosabertos.camara.leg.br/api/v2/api-docs` (OpenAPI 3.0.1; a URL `swagger/api.html` só renderiza o Swagger UI).
+- Senado: spec em `https://legis.senado.leg.br/dadosabertos/v3/api-docs` (OpenAPI 3.1, v4.1.3).
+
+## 1. Câmara dos Deputados
+
+| Fato | Evidência / implicação |
+|---|---|
+| `GET /votacoes` traz **todos os órgãos** (comissões incluídas). Em outubro/2026, a maioria era CCULT, CSAUDE etc. | Filtrar `idOrgao=180` (PLEN) para o escopo do produto. Decisão de produto: incluir comissões? |
+| Id da votação é string `"2635476-36"` (`{idEvento/ordem}-{seq}`). | `votacoes.id VARCHAR` do doc está correto. |
+| `GET /votacoes` pagina (`pagina`, `itens` ≤ 100, links `next`/`last`). `/votos` e `/orientacoes` **não** paginam (466 votos numa resposta). | Cliente precisa seguir `links.next` só na listagem. |
+| Votação **simbólica**: `/votos` retorna `dados: []`, mas `aprovacao` vem preenchido (1/0). | Regra §4.1 do doc confirmada. Amostras: `camara_v_2620905-53*`. |
+| Votação nominal: `/votos` com `tipoVoto` e o próprio `deputado_` (inclui **`siglaPartido` na data do voto**, `siglaUf`, `idLegislatura`, `urlFoto`). | Resolve a lacuna #2: guardar `partido_na_votacao` a partir daqui. Dá também para criar parlamentar sem chamar `/deputados`. |
+| Valores de `tipoVoto` observados: `Sim`, `Não`, `Abstenção`, `Artigo 17`. (`Obstrução` não apareceu na amostra; manter no mapa e logar valores desconhecidos como `outro`.) | §4.2 ok. |
+| `/orientacoes` retorna `siglaPartidoBloco`, `codTipoLideranca` (`P` = partido, `B` = bloco/federação/liderança), `orientacaoVoto`. | Ver itens abaixo. |
+| **Governo aparece como `siglaPartidoBloco = "Governo"` com `codTipoLideranca = "B"`**, não `GOV.`/`Gov.` como diz o doc. | Corrigir §2.1 e §4.3: casar `lower(siglaPartidoBloco) = 'governo'`. Deixar configurável. |
+| `orientacaoVoto` observados: `Sim`, `Não`, `Liberado` e **`""` (vazio)**. | Vazio = sem orientação; tratar como `liberado`/NULL. `obstrucao` não apareceu, mas existe no enum. |
+| Entradas `B` incluem `Maioria`, `Minoria`, `Oposição`, `Governo` (lideranças) e federações/blocos (`Fdr PT-PCdoB-PV`, `Fdr PSOL-REDE`, `Bl UniPpPsd...` — nome truncado). Entradas `P` são partidos isolados. | Lacuna #3 confirmada: **não há mapa explícito partido→bloco** na resposta e o nome do bloco vem truncado. Fidelidade partidária exige tabela de composição de blocos por legislatura (`/blocos`, `/partidos/{id}`) ou derivar de sigla. **Spike restante.** |
+| `/votacoes/{id}` não traz `proposicaoObjeto` na listagem (veio `null`); a proposição vem em `ultimaApresentacaoProposicao`, `proposicoesAfetadas[]` (com `siglaTipo`, `numero`, `ano`, `ementa`) e `objetosPossiveis[]`. Há também `/proposicoes/{id}/votacoes`. | Vincular votação→proposição via `proposicoesAfetadas` (e fallback `objetosPossiveis`). Nem toda votação tem proposição (requerimentos, pareceres `SSP`) → `proposicao_id` nulo é normal. |
+| Em votações nominais, a descrição já traz o placar (`Sim: 461; Não: 4; Total: 465.`). | Útil para validar totais no ETL (contagem de votos == placar). |
+
+## 2. Senado Federal
+
+O doc citava `/materia/{codigo}/votacoes` e `/plenario/votacao/{codigoSessao}`. **O primeiro está marcado DEPRECATED** na spec atual; o contrato recomendado é outro:
+
+| Necessidade | Endpoint atual | Observações |
+|---|---|---|
+| Votações + votos individuais | `GET /dadosabertos/votacao?dataInicio=&dataFim=` (também `codigoMateria`, `sigla/numero/ano`, `codigoParlamentar`, `codigoSessao`) | Retorna lista; cada item já inclui `votos[]` (`codigoParlamentar`, `siglaVotoParlamentar`, `siglaPartidoParlamentar`, `siglaUFParlamentar`), `identificacao` ("PEC 221/2019"), `codigoMateria`, `resultadoVotacao` (`A`), `votacaoSecreta` (`S/N`). Uma chamada substitui `/votos` + proposição. |
+| Orientações de bancada | `GET /dadosabertos/plenario/votacao/orientacaoBancada/{ini}/{fim}` (datas `YYYYMMDD`) | `orientacoesLideranca[]` com `partido` e `voto` (`SIM`/`NAO`/`LIVRE`). **`Governo` aparece como "partido"**, igual à Câmara. Casa com `/votacao` por `codigoVotacaoSve`/`sequencialVotacao` (confirmar chave). |
+| Senadores | `GET /dadosabertos/senador/lista/atual` e `/senador/lista/legislatura/{ini}/{fim}` | JSON aninhado (`ListaParlamentarEmExercicio.Parlamentares.Parlamentar[].IdentificacaoParlamentar`), ids como **string**. Inclui bloco e foto. |
+| Votos de veto/CN | `/plenario/resultado/veto/...`, `/plenario/resultado/cn/{data}` | Fora do escopo do MVP. |
+
+Particularidades:
+- Header `Accept: application/json` é necessário (default é XML).
+- **Códigos de voto do Senado são diferentes**: `Sim`, `Não`, `Presidente (art. 51 RISF)`, `P-NRV` (presente, não registrou voto), `AP` (ausência/ausente?), `LS` (licença), `NCom` (não compareceu), possivelmente `Abstenção`. Precisa de **mapa próprio**, e *presença* no Senado deve usar `/plenario/lista/tiposComparecimento` para saber o que conta como presente — **a regra "ausente na lista = sem registro" do doc não vale no Senado**: ausentes aparecem com código.
+- `totalVotosSim/Nao` vieram `null` em `/votacao`; os totais corretos estão em `qtdVotosSim/Nao` no endpoint de orientações.
+- Votos secretos (`votacaoSecreta = S`) não têm voto individual → tratar como categoria própria (nem nominal nem simbólica).
+- Votação de mérito só tem `votos[]` quando nominal; é preciso verificar o caso simbólico no Senado (não coberto pela amostra).
+
+## 3. Impacto no plano e no doc de arquitetura
+
+1. **Corrigir** §2.1/§4.3: Governo = `siglaPartidoBloco "Governo"` (Câmara) e `partido "Governo"` (Senado); `orientacaoVoto` vazio = sem orientação.
+2. **Corrigir** §2.2: usar `/votacao` e `/orientacaoBancada`; os endpoints citados no doc estão deprecated.
+3. **Adicionar** ao schema: `votos.partido_na_votacao`, `votos.alinhou_partido`, e `tipo_votacao_enum` com `secreta`. Mapa de votos por casa (o Senado tem `P-NRV`, `AP`, `LS`, `NCom`).
+4. **Presença no Senado** precisa de regra própria (ausência vem com código).
+5. **Escopo**: decidir Plenário apenas (`idOrgao=180` / Plenário do Senado) vs. comissões.
+6. A Fase 5 (Senado) fica menor do que o previsto: um endpoint já traz votos + matéria; o risco passa a ser o casamento com orientações e a regra de presença.
+
+## 3.1 Período de exercício (Câmara) — resolvido
+
+`GET /deputados/{id}/historico` devolve a linha do tempo do mandato (amostras: `samples/camara_dep_historico.json`, `camara_dep_historico_suplente.json`). Campos: `idLegislatura`, `dataHora`, `siglaPartido`, `situacao`, `condicaoEleitoral`, `descricaoStatus`.
+
+- Valores de `situacao` observados: `Exercício`, `Licença`, `SUPLENCIA`, `CONVOCADO`, `FIM_MANDATO` e `null` (linha informativa "Nome/Partido no início da legislatura").
+- **Regra para montar intervalos de exercício:** abre em `situacao = 'Exercício'` e fecha na próxima linha com `Licença`, `SUPLENCIA` ou `FIM_MANDATO`. `CONVOCADO` e `null` não abrem nem fecham.
+- Titulares e suplentes seguem o mesmo padrão, então um único algoritmo cobre os dois (ex.: suplente 103758 teve dois mandatos de exercício em 2023–2024).
+- O histórico mistura legislaturas; filtrar por `idLegislatura`. Há linhas espúrias (ex.: `idLegislatura = 58` com data de 2023) que devem ser ignoradas.
+- Troca de partido aparece como linha `Exercício` com `descricaoStatus = 'Alteração de partido'`, o que dá também o histórico de partido (útil para a v2 de fidelidade).
+- Custo: 1 chamada por deputado (~800 por legislatura, contando suplentes), feita uma vez e atualizada incrementalmente.
+- Legislatura atual: 57 (2023-02-01 a 2027-01-31), via `/legislaturas`.
+- **Presença** = votos do deputado / nominais do Plenário com `data_hora` dentro de algum intervalo de exercício dele. Tabela nova: `parlamentares_exercicio(parlamentar_id, inicio, fim, condicao, partido)`.
+- Ressalva: o horário da votação (`dataHoraRegistro`) é comparado com `dataHora` do histórico; licenças no mesmo dia da votação podem gerar bordas, por isso validar contra uma amostra de presença conhecida do site da Câmara.
+- **Senado:** equivalente ainda não investigado (v1.1).
+
+## 3.2 Vínculo votação → proposição (Câmara, Plenário)
+
+Amostra: 5 votações de um evento (`idEvento=83057`) + 50 recentes + 75 sorteadas de 2023, 2024 e 2025 (`samples/camara_evento_83057_resumo.json`, `camara_vot_*.json`).
+
+- `proposicaoObjeto` da listagem vem sempre `null`; o vínculo vem do **detalhe** `/votacoes/{id}` (1 chamada extra por votação).
+- `proposicoesAfetadas[]` resolve a maioria: **~85% das votações têm exatamente 1 proposição** (inclusive requerimentos, que já apontam para a matéria — ex.: o requerimento `2635476-23` aponta para o PLP 186/2026, a mesma do mérito `2635476-36`). Sem precisar de heurística por evento.
+- **~10% vêm com `proposicoesAfetadas` vazio**, quase todas "Alteração do Regime de Tramitação…" e "Aprovado o requerimento nº X/AAAA… urgência (art. 155)". Nesses casos `objetosPossiveis[]` tem 1 item (ex.: PL 2834/2023), mas ele **pode ser uma proposição apensada, não a citada na descrição** (a descrição citava o PL 4670/2020) → usar como vínculo de menor confiança.
+- **~2% vêm com 2 proposições** (matéria + o `REQ` do requerimento de urgência). Regra: matéria principal = a proposição de tipo diferente de `REQ`; o `REQ` vira atributo da votação.
+- Não observei votações sem nenhum vínculo na amostra do Plenário; mesmo assim manter `proposicao_id` anulável.
+
+**Algoritmo adotado:** (1) `proposicoesAfetadas` sem `REQ`, se houver exatamente uma → vínculo `direto`; (2) senão, `objetosPossiveis` de tamanho 1 → vínculo `provavel`; (3) senão `proposicao_id = NULL` → lista "Outras votações". Guardar `vinculo_confianca` em `votacoes` e mostrar o selo só quando `provavel`.
+
+## 3.3 Licença e fotos (pesquisa em 2026-11-02; não é parecer jurídico)
+
+**Câmara** — [Termos gerais do portal](https://www2.camara.leg.br/termo-de-uso-e-politica-de-privacidade/termos-gerais), item 2: *"Todas as informações publicadas no Portal da Câmara são de domínio público, gratuitas e podem ser reproduzidas desde que citada a fonte 'Câmara dos Deputados' e a autoria da informação, quando houver."*
+- Uma busca citou uma versão do texto que inclui "dados, imagens e infografias"; ao ler a página diretamente, o trecho **não menciona imagens nem fotos**. Os resultados divergem, então **não há cláusula explícita sobre fotos de deputados**.
+- Não trata de uso comercial de forma explícita (só diz "gratuitas"); isenta a Câmara de responsabilidade por imprecisões e dados de terceiros.
+- A página de termos específica dos dados abertos (`dadosabertos.camara.leg.br/termosdeuso.html`) retornou "Página não encontrada".
+
+**Senado** — a página do Senado Fotos diz que as imagens são protegidas por direitos autorais e "podem ser livremente utilizadas, desde que dados os créditos"; a [Política de Uso](https://www12.senado.leg.br/assessoria-de-imprensa/politica-de-uso) permite reproduzir com citação de fonte e sem descaracterizar o conteúdo. Não identifiquei uma licença nomeada (ex.: CC) para dados ou fotos. Contato indicado para dúvidas de vídeos/imagens: seacer@senado.leg.br.
+
+**Conclusão:**
+- Usar os **dados** é seguro com atribuição ("Fonte: Câmara dos Deputados / Senado Federal").
+- Para **copiar fotos** para storage próprio, a base é a regra geral de reprodução com crédito, mas **sem cláusula explícita** na Câmara. Risco baixo, não zero.
+- Plano: (1) crédito de fonte visível no rodapé e em cada perfil; (2) pedir confirmação por escrito à Câmara (canal de atendimento do portal) e ao Senado antes do lançamento; (3) guardar `url_foto` original e servir o espelho com fallback para o link oficial; (4) não descaracterizar nem editar as imagens além de redimensionar.
+
+## 4. Ainda em aberto (não resolvido por Swagger nem por amostra)
+
+- Mapa partido→bloco/federação por votação e por legislatura (Câmara: ver `/blocos` e `/partidos/{id}`; Senado: `Bloco` em `senador/lista/atual` + `composicao/lista/partidos`).
+- Definição de fidelidade partidária (decisão de produto).
+- Comportamento de votação simbólica e de `/votacao` no Senado fora do caso nominal.
+- Rate limits reais (não observamos bloqueio com 100–200 ms de delay) e política de backfill.
+- Itens 5–10 da lista de discovery anterior (escopo temporal, hospedagem, licença, metodologia pública, público-alvo).

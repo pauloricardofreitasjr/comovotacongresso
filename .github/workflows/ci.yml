@@ -1,0 +1,36 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: comovota
+          POSTGRES_PASSWORD: comovota
+          POSTGRES_DB: comovota
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U comovota" --health-interval 3s
+          --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgres://comovota:comovota@localhost:5432/comovota?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - run: test -z "$(gofmt -l .)"
+      - run: go test -count=1 -coverprofile=coverage.out ./...
+      - run: go tool cover -func=coverage.out | tail -1
+      - name: migrate up/down/up
+        run: |
+          go run ./cmd/etl migrate
+          go run ./cmd/etl migrate-down
+          go run ./cmd/etl migrate

@@ -21,7 +21,7 @@ Estado em 2026-11-03, após as Fases 0 a 4 e a revisão do site. Itens ordenados
 ## Dados a validar ou decidir
 
 - Por que líderes como Antonio Brito têm 100% de presença em sessão e 35% de voto nas nominais. São medidas diferentes (explicado em `discovery/README.md` §3.5), mas a **causa não foi investigada**.
-- **MPV 1151/2022 e PL 5230/2023 (Emenda 40):** a descrição oficial e a lista de votos da Câmara divergem (ver `discovery/README.md` §3.5). O site avisa, mas vale reportar à Câmara; decisão do responsável.
+- **Listas de votos duplicadas na fonte (decisão do responsável):** a lista de votos da votação `2399598-70` (PL 5230/2023, Emenda 40) é idêntica à da `2269745-90`, então o site atribui a 404 deputados votos que provavelmente não são os deles nessa votação, e isso entra no histórico, na participação e no alinhamento deles. Há ainda 3 pares de votações com listas idênticas (provável registro duplicado) e a MPV 1151/2022 com total diferente do da descrição. Hoje o site só avisa. Opção recomendada: pôr em quarentena (ocultar os votos individuais e tirar a votação das métricas) as votações com lista idêntica à de outra. Detalhes em `discovery/README.md` §3.5; relato rascunhado em `docs/comunicacoes/relato_inconsistencias_camara.md`, ainda não enviado.
 - 887 votos sem posição na fonte (2 votações, `tipoVoto` nulo) contam como participação. Confirmar que é isso mesmo.
 - 1.650 vínculos "prováveis" com a proposição, quase todos de votações de procedimento. Amostrar para avaliar a qualidade da inferência.
 - A heurística da "votação principal" foi validada em um único exemplo.

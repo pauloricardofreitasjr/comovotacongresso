@@ -39,7 +39,7 @@ export default async function Home() {
         <form className="busca-grande" action="/proposicoes" role="search">
           <IconBusca />
           <label className="sr-only" htmlFor="busca">Buscar leis e projetos</label>
-          <input id="busca" type="search" name="busca" placeholder="Ex.: imposto de renda, educação, reforma tributária" />
+          <input id="busca" type="search" name="busca" placeholder="Ex.: imposto, saúde" />
           <button type="submit">Buscar</button>
         </form>
         <ul className="chips" aria-label="Temas para começar">

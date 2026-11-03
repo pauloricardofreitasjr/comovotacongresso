@@ -40,7 +40,7 @@ export default async function Proposicoes({ searchParams }: { searchParams: Prom
         <div className="busca-grande">
           <IconBusca />
           <label className="sr-only" htmlFor="busca-lei">Assunto, palavra ou número da lei</label>
-          <input id="busca-lei" type="search" name="busca" defaultValue={busca} placeholder="Ex.: imposto, educação ou PL 186/2026" />
+          <input id="busca-lei" type="search" name="busca" defaultValue={busca} placeholder="Ex.: imposto ou PL 186/2026" />
           <button type="submit">Buscar</button>
         </div>
         <div className="filters">

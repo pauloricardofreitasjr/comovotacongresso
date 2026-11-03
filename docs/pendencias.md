@@ -40,7 +40,8 @@ Estado em 2026-11-03, após as Fases 0 a 4 e a revisão do site. Itens ordenados
 
 - Sitemap (depende da decisão de indexação). As imagens de compartilhamento (Open Graph) e o botão Compartilhar já existem para votação, deputado e lei; o sucesso do botão de copiar só foi testado em contexto automatizado.
 - Teste com leitor de tela e conferência visual do modo claro (o contraste foi verificado por cálculo, não visualmente).
-- Filtros recolhíveis no celular.
+- Celular: as telas foram conferidas em 320, 360 e 390 px (sem rolagem horizontal), mas em quadros dentro do desktop, não em aparelho real; falta testar toque, teclado virtual e o botão de compartilhar num celular de verdade.
+- Filtros recolhíveis no celular (os filtros ocupam bastante tela antes da lista).
 
 ## Fora do MVP, já registrado
 

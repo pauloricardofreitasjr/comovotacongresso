@@ -57,7 +57,7 @@ export default async function Parlamentares({ searchParams }: { searchParams: Pr
         <div className="busca-grande">
           <IconBusca />
           <label className="sr-only" htmlFor="busca-dep">Nome do deputado</label>
-          <input id="busca-dep" type="search" name="busca" defaultValue={busca} placeholder="Buscar deputado pelo nome" />
+          <input id="busca-dep" type="search" name="busca" defaultValue={busca} placeholder="Nome do deputado" />
           <button type="submit">Buscar</button>
         </div>
         <div className="filters">

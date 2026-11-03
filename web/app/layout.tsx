@@ -6,11 +6,10 @@ import { NavLink } from "@/components/NavLink";
 import { api } from "@/lib/api";
 import { formatDataHora } from "@/lib/format";
 import { CREDITO_FOTOS_RODAPE } from "@/lib/creditos";
+import { SITE_URL } from "@/lib/site";
 
 // Os dados vêm da API em tempo de requisição (com cache de 5 min nos fetch); o build não depende dela.
 export const dynamic = "force-dynamic";
-
-const SITE_URL = process.env.SITE_URL ?? "https://www.comovotacongresso.com.br";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -18,6 +17,7 @@ export const metadata: Metadata = {
   description:
     "Veja como cada deputado federal votou no Plenário da Câmara, com dados oficiais e metodologia aberta.",
   openGraph: { siteName: "Como Vota Congresso", locale: "pt_BR", type: "website" },
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };

@@ -48,6 +48,7 @@ services:
     restart: unless-stopped
     environment:
       API_URL: http://api:8080
+      SITE_URL: ${SITE_URL:-https://www.comovotacongresso.com.br}
     depends_on:
       - api
 

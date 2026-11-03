@@ -4,6 +4,9 @@ import { api } from "@/lib/api";
 import { formatData, formatDataHora, formatInt, inteiroPositivo, infoVoto, rotuloAlinhamento, rotuloOrientacao } from "@/lib/format";
 import { Aviso, Foto, limpar, Metrica, Paginacao, VotoChip } from "@/components/ui";
 import { CREDITO_FOTO } from "@/lib/creditos";
+import { Compartilhar } from "@/components/Compartilhar";
+import { metaCompartilhavel } from "@/lib/compartilhar";
+import { SITE_URL } from "@/lib/site";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
@@ -12,7 +15,11 @@ const LIMITE_VOTOS = 20;
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const p = await api.parlamentar(id, { limite_votos: 1 });
-  return { title: p.nome, description: `Como ${p.nome} votou no Plenário da Câmara: presença, votos e alinhamento com o governo.` };
+  return metaCompartilhavel({
+    titulo: p.nome,
+    descricao: `Como ${p.nome} votou no Plenário da Câmara: presença, votos e alinhamento com o governo.`,
+    caminho: `/parlamentares/${encodeURIComponent(id)}`,
+  });
 }
 
 export default async function Parlamentar({ params, searchParams }: Props) {
@@ -39,6 +46,7 @@ export default async function Parlamentar({ params, searchParams }: Props) {
             <span>{[p.partido, p.uf].filter(Boolean).join(" · ")}</span>
             <span className={`badge ${p.em_exercicio ? "aprovada" : "neutra"}`}>{p.em_exercicio ? "Em exercício" : "Fora de exercício"}</span>
           </div>
+          <Compartilhar url={`${SITE_URL}/parlamentares/${encodeURIComponent(id)}`} titulo={p.nome} texto={`Como ${p.nome} votou na Câmara dos Deputados:`} />
         </div>
       </div>
 

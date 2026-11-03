@@ -38,7 +38,7 @@ Estado em 2026-11-03, após as Fases 0 a 4 e a revisão do site. Itens ordenados
 
 ## Melhorias do site
 
-- Sitemap e imagens de compartilhamento (Open Graph) por página.
+- Sitemap (depende da decisão de indexação). As imagens de compartilhamento (Open Graph) e o botão Compartilhar já existem para votação, deputado e lei; o sucesso do botão de copiar só foi testado em contexto automatizado.
 - Teste com leitor de tela e conferência visual do modo claro (o contraste foi verificado por cálculo, não visualmente).
 - Filtros recolhíveis no celular.
 

@@ -379,3 +379,8 @@ details summary { cursor: pointer; font-weight: 600; }
 .partido-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: .5rem; }
 .partido-topo .dep-nome { font-size: 1.25rem; display: block; }
 .partido-topo small { display: block; }
+
+/* ===== Compartilhar ===== */
+.compartilhar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: 1rem 0 0; }
+.compartilhar-rotulo { font-size: .85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; }
+.compartilhar-aviso { font-size: .9rem; color: var(--text-muted); }

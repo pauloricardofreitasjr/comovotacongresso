@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import {
-  formatDataHora, formatInt, inteiroPositivo, infoVoto, plural, primeiro, rotuloAlinhamento, rotuloOrientacao,
+  formatDataHora, formatInt, inteiroPositivo, infoVoto, plural, primeiro, rotuloAlinhamento, rotuloOrientacao, rotuloResultado,
 } from "@/lib/format";
 import type { Voto } from "@/lib/types";
+import { Compartilhar } from "@/components/Compartilhar";
+import { metaCompartilhavel, resumir } from "@/lib/compartilhar";
+import { SITE_URL } from "@/lib/site";
 import { Aviso, limpar, Pessoa, Paginacao, Placar, ResultadoBadge, TipoBadge, VotoChip } from "@/components/ui";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
@@ -15,7 +18,13 @@ const OPCOES_VOTO = ["sim", "nao", "abstencao", "obstrucao", "artigo_17", "outro
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const v = await api.votacao(id);
-  return { title: v.proposicao ? `Votação — ${v.proposicao.identificacao}` : "Votação", description: limpar(v.descricao).slice(0, 200) };
+  const r = v.resumo_votos;
+  const placar = r ? `${rotuloResultado(v.aprovada)}: ${formatInt(r.sim)} Sim × ${formatInt(r.nao)} Não. ` : `${rotuloResultado(v.aprovada)}. `;
+  return metaCompartilhavel({
+    titulo: v.proposicao ? `Votação — ${v.proposicao.identificacao}` : "Votação",
+    descricao: resumir(`${placar}${limpar(v.descricao)}`, 200),
+    caminho: `/votacoes/${encodeURIComponent(id)}`,
+  });
 }
 
 type LinhaPartido = { partido: string; sim: number; nao: number; outros: number; total: number };
@@ -88,6 +97,11 @@ export default async function Votacao({ params, searchParams }: Props) {
         <h1>{v.proposicao ? v.proposicao.identificacao : "Votação"}</h1>
         <p className="lead">{limpar(v.descricao)}</p>
         {v.proposicao ? <p className="muted" style={{ marginBottom: 0 }}>{limpar(v.proposicao.ementa)}</p> : null}
+        <Compartilhar
+          url={`${SITE_URL}/votacoes/${encodeURIComponent(id)}`}
+          titulo={v.proposicao ? `Votação — ${v.proposicao.identificacao}` : "Votação"}
+          texto={`${v.proposicao ? v.proposicao.identificacao : "Votação"}${v.resumo_votos ? `: ${formatInt(v.resumo_votos.sim)} Sim × ${formatInt(v.resumo_votos.nao)} Não` : ""}. Veja como cada deputado votou:`}
+        />
       </header>
       {v.vinculo_confianca === "provavel" ? (
         <Aviso atencao>

@@ -3,6 +3,9 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { formatDataHora, plural } from "@/lib/format";
 import type { VotacaoLinha } from "@/lib/types";
+import { Compartilhar } from "@/components/Compartilhar";
+import { metaCompartilhavel, resumir } from "@/lib/compartilhar";
+import { SITE_URL } from "@/lib/site";
 import { Aviso, BarraVotos, limpar, Placar, ResultadoBadge, TipoBadge } from "@/components/ui";
 
 type Props = { params: Promise<{ id: string }> };
@@ -10,7 +13,7 @@ type Props = { params: Promise<{ id: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const p = await api.proposicao(id);
-  return { title: p.identificacao, description: limpar(p.ementa).slice(0, 200) };
+  return metaCompartilhavel({ titulo: p.identificacao, descricao: resumir(limpar(p.ementa), 200), caminho: `/proposicoes/${encodeURIComponent(id)}` });
 }
 
 /** As votações vêm em ordem cronológica; o destaque é a marcada como principal ou, sem marca, a mais recente. */
@@ -42,6 +45,11 @@ export default async function Proposicao({ params }: Props) {
           <span>{plural(p.total_votacoes, "votação", "votações")} no Plenário</span>
           <span>{plural(p.votacoes_nominais, "nominal", "nominais")}</span>
         </div>
+        <Compartilhar
+          url={`${SITE_URL}/proposicoes/${encodeURIComponent(id)}`}
+          titulo={p.identificacao}
+          texto={`${p.identificacao}: veja como os deputados votaram.`}
+        />
       </header>
 
       {destaque ? (

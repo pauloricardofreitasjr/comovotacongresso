@@ -4,6 +4,13 @@ Monitor de votações do Congresso Nacional (`www.comovotacongresso.com.br`). Co
 
 Documentação: [`docs/plano_de_implementacao.md`](docs/plano_de_implementacao.md), [arquitetura](docs/documento_de_arquitetura_e_especifica_o_t_cnica.md), [discovery das APIs](docs/discovery/README.md), [metodologia (rascunho)](docs/metodologia.md).
 
+## Licença e dados
+
+- **Código:** [GNU AGPL-3.0](LICENSE). Você pode usar, estudar e modificar. Quem colocar no ar uma versão modificada, mesmo só como serviço na web, precisa oferecer o código-fonte dela aos usuários sob a mesma licença.
+- **Dados e fotos não são cobertos por essa licença.** Os votos, presenças, proposições e fotos pertencem à fonte oficial, a [Câmara dos Deputados](https://dadosabertos.camara.leg.br). Os termos do portal permitem reproduzir as informações citando a fonte "Câmara dos Deputados". Para as fotos, os termos não têm cláusula específica; veja a análise em [`docs/discovery/README.md`](docs/discovery/README.md) §3.3 (não é parecer jurídico). Quem reutilizar os dados deve citar a fonte e seguir os termos dela, não os desta licença.
+- **Números calculados** (presença, participação, alinhamento) são interpretações deste projeto, descritas em [`docs/metodologia.md`](docs/metodologia.md). Não são dados oficiais da Câmara.
+- O projeto é independente e não tem vínculo com a Câmara dos Deputados.
+
 ## Desenvolvimento
 
 Requer Docker. Go roda em container (ou use `make GO=go ...` com Go 1.26 local).

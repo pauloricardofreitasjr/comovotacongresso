@@ -425,3 +425,35 @@ func TestIngerirSessoes_FimAFim(t *testing.T) {
 		t.Error("presença em sessão do deputado 204436 deveria ser 1/1")
 	}
 }
+
+func TestDiario_RegistraRunEFalhaQuandoHaErros(t *testing.T) {
+	pool := testdb.Novo(t)
+	srv := servidor(t)
+	defer srv.Close()
+	ctx := context.Background()
+	hoje := time.Date(2026, 10, 15, 0, 0, 0, 0, time.UTC) // D-1 e D cobrem as fixtures de 14/10 e 15/10
+
+	e := novoETL(t, pool, srv)
+	if err := e.Diario(ctx, hoje); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok, err := e.Store.UltimoRunOK(ctx, "daily"); err != nil || !ok {
+		t.Fatalf("daily ok não registrado: ok=%v err=%v", ok, err)
+	}
+
+	// a nominal passa a falhar: o daily precisa falhar (senão o agendador não alerta).
+	bad := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/votacoes/"+idNominal) {
+			http.Error(w, "ruim", http.StatusBadRequest)
+			return
+		}
+		srv.Config.Handler.ServeHTTP(w, r)
+	}))
+	defer bad.Close()
+	if err := novoETL(t, pool, bad).Diario(ctx, hoje); err == nil {
+		t.Fatal("esperava erro com votação falhando")
+	}
+	if n := contar(t, pool, `SELECT count(*) FROM etl_runs WHERE job='daily' AND status='falhou'`); n != 1 {
+		t.Errorf("runs falhos=%d", n)
+	}
+}

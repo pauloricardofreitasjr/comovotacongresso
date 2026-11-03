@@ -16,6 +16,10 @@ type Config struct {
 	CamaraBaseURL string
 	// CamaraMinInterval é o intervalo mínimo entre requisições à Câmara.
 	CamaraMinInterval time.Duration
+	// AlertWebhookURL recebe os alertas de falha do ETL (vazio = só log).
+	AlertWebhookURL string
+	// DailyEvery é o intervalo entre execuções do job diário no agendador.
+	DailyEvery time.Duration
 }
 
 func FromEnv() (Config, error) {
@@ -24,6 +28,15 @@ func FromEnv() (Config, error) {
 		HTTPAddr:          os.Getenv("HTTP_ADDR"),
 		CamaraBaseURL:     os.Getenv("CAMARA_BASE_URL"),
 		CamaraMinInterval: 150 * time.Millisecond,
+		AlertWebhookURL:   os.Getenv("ALERT_WEBHOOK_URL"),
+		DailyEvery:        2 * time.Hour,
+	}
+	if v := os.Getenv("DAILY_EVERY"); v != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil || d < time.Minute {
+			return Config{}, fmt.Errorf("DAILY_EVERY inválido (use algo como 2h, mínimo 1m): %q", v)
+		}
+		c.DailyEvery = d
 	}
 	if v := os.Getenv("CAMARA_MIN_INTERVAL_MS"); v != "" {
 		ms, err := strconv.Atoi(v)

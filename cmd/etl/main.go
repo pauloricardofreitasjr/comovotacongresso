@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"comovotacongresso/internal/agenda"
 	"comovotacongresso/internal/camara"
 	"comovotacongresso/internal/config"
 	"comovotacongresso/internal/domain"
@@ -33,6 +35,8 @@ comandos:
   votacoes -from AAAA-MM-DD -to AAAA-MM-DD [-force]
   sessoes  -from AAAA-MM-DD -to AAAA-MM-DD [-force]   presença oficial em sessões deliberativas
   daily                      votações de ontem e hoje (horário de Brasília)
+  agendar                    fica rodando: daily a cada DAILY_EVERY (2h) e sync-parlamentares aos domingos 04:00 (Brasília)
+  saude [-max 6h]            sai com erro se o último daily bem-sucedido for mais antigo que -max
   backfill [-from 2023-02-01] [-to hoje] [-legislatura N]   padrão: todas as que cobrem o período
 `
 	inicioSerie        = "2023-02-01"
@@ -64,7 +68,7 @@ func run(ctx context.Context, cmd string, args []string) error {
 		return migrate.Run(cfg.DatabaseURL, "down")
 	case "migrate-status":
 		return migrate.Run(cfg.DatabaseURL, "status")
-	case "sync-parlamentares", "votacoes", "daily", "backfill", "metricas", "sessoes":
+	case "sync-parlamentares", "votacoes", "daily", "backfill", "metricas", "sessoes", "agendar", "saude":
 		return ingestao(ctx, cfg, cmd, args)
 	default:
 		fmt.Fprint(os.Stderr, usage)
@@ -78,6 +82,7 @@ func ingestao(ctx context.Context, cfg config.Config, cmd string, args []string)
 	from := fs.String("from", "", "data inicial AAAA-MM-DD")
 	to := fs.String("to", "", "data final AAAA-MM-DD")
 	force := fs.Bool("force", false, "rebuscar votações já gravadas")
+	maxIdade := fs.Duration("max", 6*time.Hour, "saude: idade máxima do último daily bem-sucedido")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -126,14 +131,23 @@ func ingestao(ctx context.Context, cfg config.Config, cmd string, args []string)
 		return e.AtualizarMetricas(ctx)
 
 	case "daily":
-		// reprocessa D-1 e D: votações recentes podem ganhar resultado/ajustes depois.
-		if _, err = e.IngerirVotacoes(ctx, hoje.AddDate(0, 0, -1), hoje, false); err != nil {
+		return e.Diario(ctx, hoje)
+
+	case "agendar":
+		return agendar(ctx, cfg, e)
+
+	case "saude":
+		t, ok, err := e.Store.UltimoRunOK(ctx, "daily")
+		if err != nil {
 			return err
 		}
-		if _, err = e.IngerirSessoes(ctx, hoje.AddDate(0, 0, -1), hoje, false); err != nil {
-			return err
+		if !ok {
+			return errors.New("nenhum daily bem-sucedido registrado")
 		}
-		return e.AtualizarMetricas(ctx)
+		if idade := time.Since(t); idade > *maxIdade {
+			return fmt.Errorf("último daily bem-sucedido há %s (limite %s)", idade.Round(time.Minute), *maxIdade)
+		}
+		return nil
 
 	case "backfill":
 		if *from == "" {
@@ -248,4 +262,31 @@ func syncPeriodo(ctx context.Context, e *etl.ETL, ini, fim time.Time) error {
 		return fmt.Errorf("nenhuma legislatura cobre %s a %s", ini.Format("2006-01-02"), fim.Format("2006-01-02"))
 	}
 	return e.SyncLegislaturas(ctx, ls)
+}
+
+// agendar roda o ETL continuamente: o daily a cada cfg.DailyEvery e o sync-parlamentares
+// semanal (o daily não atualiza exercício nem partido). Falhas vão para o webhook, se houver.
+func agendar(ctx context.Context, cfg config.Config, e *etl.ETL) error {
+	loc := brasilia()
+	var av agenda.Avisador
+	if cfg.AlertWebhookURL != "" {
+		av = agenda.Webhook{URL: cfg.AlertWebhookURL, Client: &http.Client{Timeout: 10 * time.Second}}
+	} else {
+		slog.Warn("ALERT_WEBHOOK_URL não definido: falhas só aparecem no log")
+	}
+	a := &agenda.Agendador{
+		Avisador: av,
+		Jobs: []agenda.Job{
+			{Nome: "daily", Horario: agenda.Cada(cfg.DailyEvery), AoIniciar: true, Limite: 2 * time.Hour,
+				Rodar: func(ctx context.Context) error { return e.Diario(ctx, dia(time.Now().In(loc))) }},
+			{Nome: "sync-parlamentares", Horario: agenda.Semanal{Dia: time.Sunday, Hora: 4, Loc: loc}, Limite: 2 * time.Hour,
+				Rodar: func(ctx context.Context) error {
+					if err := syncParlamentares(ctx, e, 0, time.Now().In(loc)); err != nil {
+						return err
+					}
+					return e.AtualizarMetricas(ctx)
+				}},
+		},
+	}
+	return a.Rodar(ctx)
 }

@@ -156,6 +156,34 @@ func (e *ETL) syncExercicio(ctx context.Context, parlamentarID, idExterno int, l
 	return e.Store.SubstituirExercicioNoPeriodo(ctx, parlamentarID, domain.Intervalos(evs, legislatura), leg.Inicio, leg.Fim.AddDate(0, 0, 1))
 }
 
+// Diario reprocessa D-1 e D (votações recentes podem ganhar resultado ou ajustes depois) e
+// recalcula as métricas. Registra a execução como job "daily" e falha se alguma votação
+// ou sessão der erro, para que o agendador alerte.
+func (e *ETL) Diario(ctx context.Context, hoje time.Time) (err error) {
+	runID, err := e.Store.IniciarRun(ctx, "daily", map[string]string{"data": hoje.Format("2006-01-02")})
+	if err != nil {
+		return err
+	}
+	defer func() { e.finalizar(runID, err) }()
+
+	ontem := hoje.AddDate(0, 0, -1)
+	rv, err := e.IngerirVotacoes(ctx, ontem, hoje, false)
+	if err != nil {
+		return err
+	}
+	rs, err := e.IngerirSessoes(ctx, ontem, hoje, false)
+	if err != nil {
+		return err
+	}
+	if err = e.AtualizarMetricas(ctx); err != nil {
+		return err
+	}
+	if rv.Erros+rs.Erros > 0 {
+		return fmt.Errorf("%d votações e %d sessões com erro (ver etl_errors)", rv.Erros, rs.Erros)
+	}
+	return nil
+}
+
 // IngerirVotacoes baixa e grava as votações do Plenário entre ini e fim (inclusive).
 // Com pularExistentes, votações já gravadas não são rebuscadas (útil no backfill).
 func (e *ETL) IngerirVotacoes(ctx context.Context, ini, fim time.Time, pularExistentes bool) (res Resumo, err error) {

@@ -305,6 +305,16 @@ func (s *Store) FinalizarRun(ctx context.Context, id int64, status, erro string)
 	return err
 }
 
+// UltimoRunOK devolve quando o job terminou com sucesso pela última vez (ok=false se nunca).
+func (s *Store) UltimoRunOK(ctx context.Context, job string) (t time.Time, ok bool, err error) {
+	var ft *time.Time
+	err = s.pool.QueryRow(ctx, `SELECT max(finished_at) FROM etl_runs WHERE job = $1 AND status = 'ok'`, job).Scan(&ft)
+	if err != nil || ft == nil {
+		return t, false, err
+	}
+	return *ft, true, nil
+}
+
 func (s *Store) RegistrarErro(ctx context.Context, runID int64, ref, msg string) error {
 	_, err := s.pool.Exec(ctx, `INSERT INTO etl_errors (run_id, ref, mensagem) VALUES ($1, $2, $3)`, runID, trunc(ref, 150), msg)
 	return err

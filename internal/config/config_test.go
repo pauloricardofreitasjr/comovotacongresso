@@ -43,3 +43,21 @@ func TestFromEnv(t *testing.T) {
 		}
 	})
 }
+
+func TestFromEnv_DailyEvery(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://x")
+	c, err := FromEnv()
+	if err != nil || c.DailyEvery != 2*time.Hour {
+		t.Fatalf("padrão: %v %v", c.DailyEvery, err)
+	}
+	t.Setenv("DAILY_EVERY", "30m")
+	if c, err = FromEnv(); err != nil || c.DailyEvery != 30*time.Minute {
+		t.Fatalf("30m: %v %v", c.DailyEvery, err)
+	}
+	for _, ruim := range []string{"2", "abc", "10s"} {
+		t.Setenv("DAILY_EVERY", ruim)
+		if _, err := FromEnv(); err == nil {
+			t.Errorf("DAILY_EVERY=%q deveria ser inválido", ruim)
+		}
+	}
+}

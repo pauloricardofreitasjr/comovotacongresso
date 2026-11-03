@@ -1,0 +1,35 @@
+{
+	email {$ACME_EMAIL}
+	order rate_limit before basicauth
+}
+
+# Domínio canônico: com www. O apex só redireciona.
+comovotacongresso.com.br {
+	redir https://www.comovotacongresso.com.br{uri} permanent
+}
+
+www.comovotacongresso.com.br {
+	encode zstd gzip
+
+	# Por IP de origem. Atrás de CDN/proxy reverso (ex.: Cloudflare), troque {remote_host}
+	# pelo cabeçalho com o IP real do cliente (ex.: {header.CF-Connecting-IP}) e aceite
+	# conexões só dos IPs da CDN; senão todos parecem ser o mesmo IP.
+	rate_limit {
+		zone por_ip {
+			key    {remote_host}
+			events 120
+			window 1m
+		}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+		-Server
+	}
+
+	# O site consome a API só pelo servidor (rede interna); a API não é exposta.
+	reverse_proxy web:3000
+}

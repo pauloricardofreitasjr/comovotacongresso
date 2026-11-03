@@ -5,3 +5,6 @@ bin/
 .gocache/
 .gomodcache/
 coverage.out
+
+# produção
+deploy/.env.prod

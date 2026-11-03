@@ -6,7 +6,7 @@ Estado em 2026-11-03, após as Fases 0 a 4 e a revisão do site. Itens ordenados
 
 | Pendência | Quem resolve |
 |---|---|
-| **Fase 6 inteira:** agendar o ETL, deploy, HTTPS e DNS em `www.comovotacongresso.com.br`, backups, alertas, rate limiting no proxy e senhas reais no lugar das de desenvolvimento | Claude, com decisão de hospedagem do responsável |
+| **Fase 6, o que falta:** escolher a hospedagem, apontar DNS, fazer o primeiro deploy real e testar HTTPS (o Caddy só foi validado em configuração e rate limit, sem certificado real), cópia dos backups para fora da máquina e monitor externo. O restante está pronto em `deploy/` e `docs/operacao.md` | Responsável decide a hospedagem; Claude executa |
 | **Licença das fotos:** pedir confirmação por escrito à Câmara (e ao Senado na v1.1). Ver `discovery/README.md` §3.3 | Responsável |
 | **Fotos copiadas para o nosso storage:** a decisão foi copiar, mas o site hoje **carrega direto do portal da Câmara**; a cópia não foi implementada | Claude, depois da licença |
 | **Crédito de fonte nas fotos** e texto definitivo de atribuição | Responsável aprova, Claude implementa |
@@ -30,7 +30,8 @@ Estado em 2026-11-03, após as Fases 0 a 4 e a revisão do site. Itens ordenados
 ## Técnico
 
 - **A CI nunca rodou.** O repositório não tem remoto, então os jobs de Go e do site estão escritos, mas sem execução real.
-- O `daily` não atualiza exercício e partido dos parlamentares. Precisa de um `sync-parlamentares` periódico (por exemplo, semanal) para pegar novos suplentes, licenças e trocas de partido.
+- O `sync-parlamentares` semanal roda dentro do agendador (`etl agendar`), mas só foi exercitado em testes; a primeira execução real é no próximo domingo após o deploy.
+- O agendador não impede que um `etl daily` manual rode ao mesmo tempo que o agendado (as gravações são idempotentes, mas duplicam requisições à Câmara).
 - `etl_errors` acumula as mesmas linhas de "indisponível" a cada execução. Falta limpeza ou deduplicação.
 - Cobertura: `cmd/api` e `cmd/etl` quase sem teste (são só a fiação). `go test -race` não roda sem compilador C. O `golangci-lint` do plano não foi configurado.
 - O documento de arquitetura original (`documento_de_arquitetura_e_especifica_o_t_cnica.md`) está **parcialmente defasado** em relação ao que foi implementado (nomes de métricas, SQL do §4.4).
